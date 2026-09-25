@@ -1352,7 +1352,7 @@ function readSyncLink() {
   } catch (e) { setTimeout(() => toast('Link sinkron tidak valid'), 300); }
   history.replaceState(null, '', location.pathname + location.search + '#home');
 }
-const summary = () => ({ day: S.day, done: S.doneToday, goal: S.goal, left: dueItems().length + newLeft() });
+const summary = () => ({ day: S.day, done: S.doneToday, goal: S.goal, left: dueItems().length + newLeft(), streak: streak() });
 function api(body) {
   return fetch(SYNC.url, { method: 'POST', keepalive: true, body: JSON.stringify({ secret: SYNC.secret, ...body }) }).then(r => r.json());
 }
