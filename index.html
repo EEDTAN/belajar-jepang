@@ -697,7 +697,7 @@ function schedule(card, g, now = Date.now()) {
   if (g === 4) { c.ivl = c.reps === 0 ? 3 : Math.max(c.ivl + 2, Math.round(c.ivl * c.ease * 1.3)); c.ease += .15; }
   c.reps++; c.due = now + c.ivl * DAY; return c;
 }
-const fmtIvl = c => c.ivl === 0 ? '10 mnt' : c.ivl < 30 ? c.ivl + ' hr' : Math.round(c.ivl / 30) + ' bln';
+const fmtIvl = c => c.ivl === 0 ? 'dalam 10 menit (sesi ini)' : c.ivl === 1 ? 'besok' : c.ivl < 30 ? c.ivl + ' hari lagi' : '± ' + Math.round(c.ivl / 30) + ' bulan lagi';
 const status = id => { const c = S.cards[id]; return !c ? 'n' : c.ivl >= 21 ? 'm' : 'l'; };
 
 /* ================= STATE ================= */
@@ -994,7 +994,7 @@ function vReview() {
       const rd = isV ? it.r : mainRead(it), want = R.mode === 'mean' ? '' : ` · jawaban: ${rd} (${toRomaji(rd)})`;
       const why = !R.typed ? 'Tidak dijawab' + want : !score ? `Jawabanmu: "${esc(R.typed)}"${want}` : score === 1 ? `Hampir tepat: "${esc(R.typed)}"${want}` :
         g === 2 ? `Benar, tapi agak lama (${secs.toFixed(1)} dtk)` : g === 4 ? `Tepat & cepat (${secs.toFixed(1)} dtk)` : `Tepat (${secs.toFixed(1)} dtk)`;
-      body = q + `<div class="vd ${cls}"><span class="vi">${icon}</span><div><b>${label}</b><small>${why} · muncul lagi ${g === 1 ? 'sebentar lagi' : 'dalam ' + fmtIvl(S.cards[it.id])}</small></div></div>
+      body = q + `<div class="vd ${cls}"><span class="vi">${icon}</span><div><b>${label}</b><small>${why} · muncul lagi ${fmtIvl(S.cards[it.id])}</small></div></div>
         <div class="row" style="margin-top:14px">${g === 1 && R.typed ? `<button class="linkbtn" style="margin:0" onclick="overrule()">Jawabanku sebenarnya benar</button>` : ''}<span class="sp"></span>
         <button class="btn" onclick="nextCard()">Lanjut →</button></div>`;
       hint = 'Enter / Spasi untuk lanjut';
