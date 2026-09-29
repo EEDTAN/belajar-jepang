@@ -141,8 +141,9 @@ aside:empty{display:none}
 .qcard{text-align:center;padding:34px 22px;position:relative}
 .big{font-size:clamp(52px,13vw,92px);font-weight:700;line-height:1.25;margin:10px 0 6px;text-shadow:0 6px 30px rgba(123,92,255,.25)}
 .big.id{font:800 clamp(28px,7vw,40px) 'Plus Jakarta Sans'}
-.tag{position:absolute;top:14px;left:14px;display:flex;gap:6px}
-.tag span{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:var(--line)}
+.tag{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:-20px -8px 24px}
+.tag .mode{margin:0}
+.tag>span{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:var(--line)}
 .tag .new{background:var(--grad);color:#fff}
 .ans{margin-top:16px;display:flex;gap:8px}
 .ans input{flex:1;min-width:0;font:600 17px 'Plus Jakarta Sans';padding:14px 16px;border-radius:16px;border:2px solid var(--line);background:var(--solid);color:var(--text);outline:none;transition:.2s}
@@ -1002,7 +1003,7 @@ function vReview() {
       <button class="btn" style="margin-top:16px" onclick="learned()">Sudah kuingat, lanjut →</button>`;
     hint = 'Enter / Spasi untuk lanjut';
   } else {
-    const q = modeBadge(R.mode) + (R.mode === 'jp' ? `<div class="big id">${esc(it.m)}</div>`
+    const q = (R.mode === 'jp' ? `<div class="big id">${esc(it.m)}</div>`
       : R.mode === 'romaji' ? `<div class="big ${isV ? '' : 'kchar'}">${isV ? it.w : it.c}</div>`
       : `<div class="big ${isV ? '' : 'kchar'}">${isV ? wordHTML(it) : it.c}</div>`);
     if (!R.shown) {
@@ -1025,7 +1026,7 @@ function vReview() {
     <div class="row" style="margin-bottom:8px"><b>Review</b><span class="sp"></span><span class="muted">${R.i + 1} / ${R.q.length}</span></div>
     <div class="prog"><i style="width:${R.i / R.q.length * 100}%"></i></div>
     <div class="card qcard" id="qc">
-      <div class="tag"><span>${isV ? 'Kosakata' : 'Kanji'}</span>${S.cards[it.id] ? '' : '<span class="new">Baru</span>'}</div>
+      <div class="tag"><span>${isV ? 'Kosakata' : 'Kanji'}</span>${S.cards[it.id] ? '' : '<span class="new">Baru</span>'}${intro ? '' : modeBadge(R.mode)}</div>
       ${body}
     </div>
     <div class="hint">${hint}</div>
