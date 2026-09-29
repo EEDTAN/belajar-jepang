@@ -120,13 +120,20 @@ main.wide{max-width:1480px}
 .rvgrid .rv{order:-1}
 @media (min-width:1100px){
   .rvgrid{grid-template-columns:minmax(0,1fr) minmax(0,600px) minmax(0,1fr);align-items:start}
-  .rvgrid .rv{grid-column:2;grid-row:1}.side-l{grid-column:1;grid-row:1}.side-r{grid-column:3;grid-row:1}
-  .side{margin-top:38px}
+  .rvgrid .rv{grid-column:2;grid-row:1;margin:0 auto}.side-l{grid-column:1;grid-row:1}.side-r{grid-column:3;grid-row:1}
+  .side{margin-top:38px;padding:26px;font-size:17px}
+  .side h3{font-size:21px}
+  .side .lbl{font-size:12.5px}
+  .side .xw{font-size:60px}.side .xm{font-size:28px}.side .xr{font-size:22px}
+  .side .kc{font-size:16px}.side .kc b{font-size:26px}
+  .side .ex .jp,.side .rdg b{font-size:21px}
 }
 aside:empty{display:none}
 .side{padding:18px;animation:up .35s both}
 .side h3{font-size:17px;margin-bottom:10px}
-.kv{margin-top:10px}
+.xw{font-size:36px;font-weight:700;line-height:1.2}.xm{display:block;font-size:20px;font-weight:800;line-height:1.3}.xr{display:block;font-size:18px}
+.kvg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:4px 20px}
+.kv{margin-top:12px}.kv.full{grid-column:1/-1}
 .kc{display:inline-flex;gap:6px;align-items:center;margin:4px 6px 0 0;padding:4px 10px;border-radius:12px;background:var(--glass);border:1px solid var(--line);font-size:14px}
 .kc b{font:700 20px 'Noto Sans JP'}
 .prog{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:16px}
@@ -349,7 +356,7 @@ const VRAW = {
 自転車|じてんしゃ|sepeda|自転車[じてんしゃ]で 学校[がっこう]へ 行[い]きます。|Saya ke sekolah naik sepeda.|新[あたら]しい 自転車[じてんしゃ]が ほしいです。|Saya ingin sepeda baru.
 お金|おかね|uang|お金[かね]が ありません。|Tidak punya uang.
 電話|でんわ|telepon|母[はは]に 電話[でんわ]を かけます。|Saya menelepon ibu.|電話[でんわ]番号[ばんごう]は 何番[なんばん]ですか。|Nomor teleponmu berapa?
-時計|とけい|jam (arloji)|この 時計[とけい]は 高[たか]いです。|Jam ini mahal.
+時計|とけい|jam/arloji|この 時計[とけい]は 高[たか]いです。|Jam ini mahal.
 傘|かさ|payung|傘[かさ]を 忘[わす]れました。|Saya lupa payung.|雨[あめ]ですから、傘[かさ]を 持[も]って 行[い]きます。|Karena hujan, saya membawa payung.
 かばん|かばん|tas|かばんの 中[なか]に 本[ほん]が あります。|Ada buku di dalam tas.|この かばんは 高[たか]いです。|Tas ini mahal.
 机|つくえ|meja|机[つくえ]の 上[うえ]に ペンが あります。|Ada pena di atas meja.
@@ -642,11 +649,21 @@ function lev(a, b) {
   return d[a.length][b.length];
 }
 // skor jawaban: 0 salah · 1 benar tapi ada salah ketik · 2 tepat
+const NUM = { 1: 'satu', 2: 'dua', 3: 'tiga', 4: 'empat', 5: 'lima', 6: 'enam', 7: 'tujuh', 8: 'delapan', 9: 'sembilan', 10: 'sepuluh', 100: 'seratus', 1000: 'seribu', 10000: 'sepuluh ribu' };
+// kata dasar juga diterima: membaca→baca, menulis→tulis, memakai→pakai, bertemu→temu
+function roots(w) {
+  const m = w.match(/^(meng|meny|mem|men|me|ber|be)([a-z]{4,})$/); if (!m) return [w];
+  const [, p, r] = m, sub = /^[aiueo]/.test(r) && { men: 't', mem: 'p', meng: 'k', meny: 's' }[p];
+  return sub ? [w, r, sub + r] : [w, r];
+}
 function matchMeaning(input, meaning) {
-  const n = s => s.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9\- ]/g, '').replace(/\s+/g, ' ').trim();
+  // laki2 = laki-laki = laki laki
+  const n = s => s.toLowerCase().replace(/[()]/g, ' ').replace(/([a-z]+)2\b/g, '$1 $1').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const x = n(input); if (!x) return 0;
-  const alts = meaning.split(/[\/,;]/).map(n).filter(Boolean);
-  if (alts.includes(x)) return 2;
+  // "berapa (harga)": "berapa" dan "berapa harga" sama-sama benar
+  const alts = meaning.split(/[\/,;]/).flatMap(a => [n(a.replace(/\(.*?\)/g, '')), n(a)]).filter(Boolean);
+  const xs = NUM[x] ? [NUM[x]] : roots(x);
+  if (alts.some(a => roots(a).some(r => xs.includes(r)))) return 2;
   return alts.some(a => lev(a, x) <= (a.length > 8 ? 2 : a.length > 4 ? 1 : 0)) ? 1 : 0;
 }
 const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
@@ -663,10 +680,11 @@ function toRomaji(kanaStr) {
     if (dbl) { out += r[0]; dbl = false; }
     out += r;
   }
-  return out;
+  return out.replace(/^(konnichi|konban)ha$/, '$1wa'); // は partikel dibaca "wa"
 }
-// samakan ejaan Hepburn/Kunrei: shi=si, chi=ti, tsu=tu, fu=hu, ja=zya, nn=n
-const normR = s => s.toLowerCase().replace(/[^a-z]/g, '').replace(/cch/g, 'tch').replace(/tch/g, 'tt').replace(/wo/g, 'o')
+// samakan ejaan Hepburn/Kunrei: shi=si, chi=ti, tsu=tu, fu=hu, ja=zya, nn=n, ō=ou, shimbun=shinbun
+const normR = s => s.toLowerCase().replace(/[āâ]/g, 'aa').replace(/[īî]/g, 'ii').replace(/[ūû]/g, 'uu').replace(/[ēê]/g, 'ee').replace(/[ōô]/g, 'ou')
+  .replace(/[^a-z]/g, '').replace(/oo/g, 'ou').replace(/m(?=[bpm])/g, 'n').replace(/cch/g, 'tch').replace(/tch/g, 'tt').replace(/wo/g, 'o')
   .replace(/sh/g, 'sy').replace(/ch/g, 'ty').replace(/tsu/g, 'tu').replace(/j/g, 'zy').replace(/fu/g, 'hu')
   .replace(/([stz])yi/g, '$1i').replace(/nn(?![aiueoy])/g, 'n');
 const hasJP = t => /[\u3040-\u30ff\u4e00-\u9fff]/.test(t);
@@ -675,8 +693,8 @@ function matchReading(input, reading) {
   const x = input.replace(/\s+/g, ''); if (!x) return 0;
   if (/[぀-ヿ]/.test(x)) { const a = toHira(x), b = toHira(reading); return a === b ? 2 : b.length > 3 && lev(a, b) <= 1 ? 1 : 0; }
   const a = normR(x), b = normR(toRomaji(reading));
-  if (a === b) return 2;
-  return shortV(a) === shortV(b) || (b.length > 4 && lev(a, b) <= 1) ? 1 : 0;
+  if (a === b || shortV(a) === shortV(b)) return 2; // arigato, gakko, kyo: ejaan tanpa vokal panjang umum dipakai
+  return b.length > 4 && lev(a, b) <= 1 ? 1 : 0;
 }
 // sistem yang menilai: salah → Lupa, salah ketik/lambat → Sulit, tepat → Bagus, tepat & cepat → Mudah
 function autoGrade(score, secs, len) {
@@ -942,15 +960,17 @@ function sentencesFor(it, own, max = 3) {
 const sentHTML = ([jp, id]) => `<div class="ex"><div class="row"><span class="jp">${furi(jp)}</span><span class="sp"></span>${spk(kana(jp))}</div><div class="muted">${esc(id)}</div></div>`;
 function explainHTML(it) { // panel kiri: pembahasan
   if (it.type === 'k') return `<div class="card side"><h3>📘 Pembahasan</h3>
-    <div class="row"><span class="kchar" style="font-size:52px;font-weight:700;line-height:1">${it.c}</span><div><span class="lbl">Arti kanji</span><div class="mean" style="font-size:22px;font-weight:800">${esc(it.m)}</div></div></div>
+    <div class="row"><span class="kchar xw">${it.c}</span><div><span class="lbl">Arti kanji</span><b class="xm">${esc(it.m)}</b></div></div>
     ${kanjiInfo(it).split('<div class="ex">')[0]}</div>`;
   const ks = [...it.w].map(ch => KANJI.find(k => k.c === ch)).filter(Boolean);
   return `<div class="card side"><h3>📘 Pembahasan</h3>
-    <div class="row"><span class="jp" style="font-size:34px;font-weight:700">${wordHTML(it)}</span>${spk(it.r)}</div>
-    <div class="kv"><span class="lbl">Arti</span><b style="font-size:20px">${esc(it.m)}</b></div>
-    <div class="kv"><span class="lbl">Cara baca</span><span class="jp" style="font-size:18px">${it.r}</span> · <b>${toRomaji(it.r)}</b></div>
-    ${ks.length ? `<div class="kv"><span class="lbl">Kanji di kata ini</span>${ks.map(k => `<span class="kc"><b>${k.c}</b>${esc(k.m)}</span>`).join('')}</div>` : ''}
-    <div class="kv"><span class="lbl">Tema</span><span class="chip">${it.theme}</span></div></div>`;
+    <div class="row"><span class="jp xw">${wordHTML(it)}</span>${spk(it.r)}</div>
+    <div class="kvg">
+      <div class="kv"><span class="lbl">Arti</span><b class="xm">${esc(it.m)}</b></div>
+      <div class="kv"><span class="lbl">Cara baca</span><span class="jp xr">${it.r}</span><b class="xr">${toRomaji(it.r)}</b></div>
+      ${ks.length ? `<div class="kv full"><span class="lbl">Kanji di kata ini</span>${ks.map(k => `<span class="kc"><b>${k.c}</b>${esc(k.m)}</span>`).join('')}</div>` : ''}
+      <div class="kv"><span class="lbl">Tema</span><span class="chip">${it.theme}</span></div>
+    </div></div>`;
 }
 function examplesHTML(it) { // panel kanan: contoh
   if (it.type === 'v') return `<div class="card side"><h3>💬 Contoh kalimat</h3>${sentencesFor(it, it.ex).map(sentHTML).join('')}</div>`;
