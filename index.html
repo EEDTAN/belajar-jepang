@@ -652,20 +652,37 @@ function lev(a, b) {
 }
 // skor jawaban: 0 salah · 1 benar tapi ada salah ketik · 2 tepat
 const NUM = { 1: 'satu', 2: 'dua', 3: 'tiga', 4: 'empat', 5: 'lima', 6: 'enam', 7: 'tujuh', 8: 'delapan', 9: 'sembilan', 10: 'sepuluh', 100: 'seratus', 1000: 'seribu', 10000: 'sepuluh ribu' };
-// kata dasar juga diterima: membaca→baca, menulis→tulis, memakai→pakai, bertemu→temu
+// sinonim yang juga diterima (tidak ditampilkan di kartu). Kunci = arti di data, huruf kecil, tanda hubung jadi spasi.
+const SYN = {
+  sulit: 'susah/sukar', mudah: 'gampang', kenapa: 'mengapa', cantik: 'indah', baju: 'pakaian', memakai: 'menggunakan', menonton: 'nonton',
+  setiap: 'tiap', perusahaan: 'kantor', minggu: 'pekan', 'minggu lalu': 'pekan lalu/minggu kemarin', 'akhir pekan': 'akhir minggu/weekend',
+  menyenangkan: 'seru', teman: 'kawan/sahabat', guru: 'pengajar', pelajar: 'siswa/murid', ayah: 'bapak/papa', ibu: 'mama/bunda',
+  'kakak laki laki': 'abang', 'laki laki': 'pria/cowok', perempuan: 'wanita/cewek', 'selamat tinggal': 'sampai jumpa', halo: 'hai',
+  'salam kenal': 'senang bertemu/senang berkenalan', sayur: 'sayuran', camilan: 'cemilan/jajanan/snack', masakan: 'hidangan',
+  kamar: 'ruangan/ruang', kereta: 'kereta api/kereta listrik', toilet: 'wc/kamar mandi', sekarang: 'kini', berbicara: 'bercakap',
+  mengerti: 'paham', bertemu: 'ketemu/berjumpa', membuat: 'bikin', sepi: 'sunyi', bagaimana: 'gimana', 'jam berapa': 'pukul berapa',
+  'tengah hari': 'siang', setengah: 'separuh', 'lebih dulu': 'dulu/duluan/lebih dahulu/sebelumnya', setelah: 'sesudah', uang: 'duit',
+  pulang: 'kembali', berkata: 'bilang/mengatakan', sore: 'petang', universitas: 'kampus', 'rumah sakit': 'rs', melakukan: 'berbuat/mengerjakan',
+  pohon: 'kayu', lama: 'tua',
+};
+// kata dasar juga diterima: membaca→baca, memakan→makan, mendengarkan→dengar, anak-anak→anak
 function roots(w) {
-  const m = w.match(/^(meng|meny|mem|men|me|ber|be)([a-z]{4,})$/); if (!m) return [w];
-  const [, p, r] = m, sub = /^[aiueo]/.test(r) && { men: 't', mem: 'p', meng: 'k', meny: 's' }[p];
-  return sub ? [w, r, sub + r] : [w, r];
+  const out = new Set([w]), d = w.match(/^([a-z]+) \1(an)?$/); if (d) out.add(d[1]);
+  for (const x of [...out]) for (const p of ['meng', 'meny', 'mem', 'men', 'me', 'ber', 'be']) {
+    const r = x.startsWith(p) && x.slice(p.length); if (!r || !/^[a-z]{4,}$/.test(r)) continue;
+    out.add(r); const sub = /^[aiueo]/.test(r) && { men: 't', mem: 'p', meng: 'k', meny: 's' }[p]; if (sub) out.add(sub + r);
+  }
+  for (const x of [...out]) { const s = x.match(/^([a-z]{4,}?)(kan|i|nya)$/); if (s) out.add(s[1]); }
+  return [...out];
 }
 function matchMeaning(input, meaning) {
-  // laki2 = laki-laki = laki laki
-  const n = s => s.toLowerCase().replace(/[()]/g, ' ').replace(/([a-z]+)2\b/g, '$1 $1').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  // laki2 = laki-laki = laki laki · 10.000 = 10000
+  const n = s => s.toLowerCase().replace(/(\d)\.(?=\d{3})/g, '$1').replace(/[()]/g, ' ').replace(/([a-z]+)2\b/g, '$1 $1').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const x = n(input); if (!x) return 0;
   // "berapa (harga)": "berapa" dan "berapa harga" sama-sama benar
-  const alts = meaning.split(/[\/,;]/).flatMap(a => [n(a.replace(/\(.*?\)/g, '')), n(a)]).filter(Boolean);
-  const xs = NUM[x] ? [NUM[x]] : roots(x);
-  if (alts.some(a => roots(a).some(r => xs.includes(r)))) return 2;
+  const alts = meaning.split(/[\/,;]/).flatMap(a => [n(a.replace(/\(.*?\)/g, '')), n(a)]).filter(Boolean).flatMap(a => [a, ...(SYN[a] || '').split('/').filter(Boolean)]);
+  const xs = NUM[x] ? [NUM[x]] : roots(x), nos = s => s.replace(/ /g, ''); // di mana = dimana
+  if (alts.some(a => nos(a) === nos(x) || roots(a).some(r => xs.includes(r)))) return 2;
   return alts.some(a => lev(a, x) <= (a.length > 8 ? 2 : a.length > 4 ? 1 : 0)) ? 1 : 0;
 }
 const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
@@ -685,7 +702,7 @@ function toRomaji(kanaStr) {
   return out.replace(/^(konnichi|konban)ha$/, '$1wa'); // は partikel dibaca "wa"
 }
 // samakan ejaan Hepburn/Kunrei: shi=si, chi=ti, tsu=tu, fu=hu, ja=zya, nn=n, ō=ou, shimbun=shinbun
-const normR = s => s.toLowerCase().replace(/[āâ]/g, 'aa').replace(/[īî]/g, 'ii').replace(/[ūû]/g, 'uu').replace(/[ēê]/g, 'ee').replace(/[ōô]/g, 'ou')
+const normR = s => s.toLowerCase().replace(/[āâ]/g, 'aa').replace(/[īî]/g, 'ii').replace(/[ūû]/g, 'uu').replace(/[ēê]/g, 'ee').replace(/[ōô]/g, 'ou').replace(/ei/g, 'ee')
   .replace(/[^a-z]/g, '').replace(/oo/g, 'ou').replace(/m(?=[bpm])/g, 'n').replace(/cch/g, 'tch').replace(/tch/g, 'tt').replace(/wo/g, 'o')
   .replace(/sh/g, 'sy').replace(/ch/g, 'ty').replace(/tsu/g, 'tu').replace(/j/g, 'zy').replace(/fu/g, 'hu')
   .replace(/([stz])yi/g, '$1i').replace(/nn(?![aiueoy])/g, 'n');
@@ -712,7 +729,7 @@ function schedule(card, g, now = Date.now()) {
   if (g === 1) {
     c.lapses++; c.reps = 0; c.ivl = 0; c.ease = Math.max(1.3, c.ease - .2); c.due = now + 10 * MIN; return c;
   }
-  if (g === 2) { c.ivl = c.reps ? Math.max(1, Math.round(c.ivl * 1.2)) : 1; c.ease = Math.max(1.3, c.ease - .15); }
+  if (g === 2) { c.ivl = c.reps ? Math.max(c.ivl + 1, Math.round(c.ivl * 1.2)) : 1; c.ease = Math.max(1.3, c.ease - .15); }
   if (g === 3) c.ivl = c.reps === 0 ? 1 : c.reps === 1 ? 3 : Math.max(c.ivl + 1, Math.round(c.ivl * c.ease));
   if (g === 4) { c.ivl = c.reps === 0 ? 3 : Math.max(c.ivl + 2, Math.round(c.ivl * c.ease * 1.3)); c.ease += .15; }
   c.reps++; c.due = now + c.ivl * DAY; return c;
@@ -907,6 +924,10 @@ function kbMod(pairs) {
 }
 function kbEnter() { if (route() === 'review') check(); else if (route() === 'quiz') quizTyped(); }
 const jpAnswer = (it, typed) => typed === it.w ? 2 : matchReading(typed, it.r);
+// soal arti→Jepang: kata lain yang artinya mencakup soal juga benar ("maaf" → すみません atau ごめんなさい)
+const meanKeys = m => m.split('/').map(a => a.trim());
+const coversMeaning = (v, it) => { const k = new Set(meanKeys(v.m).flatMap(a => [a, a.replace(/\s*\(.*?\)/g, '')])); return meanKeys(it.m).every(a => k.has(a)); };
+const jpByMeaning = (it, typed) => Math.max(jpAnswer(it, typed), ...VOCAB.filter(v => v !== it && coversMeaning(v, it)).map(v => jpAnswer(v, typed)));
 
 /* ---------- tipe soal ---------- */
 const MODES = {
@@ -1045,7 +1066,7 @@ function check(skip) {
   if (typed === null) return; // huruf yang dipakai tidak sesuai tipe soal
   R.typed = typed;
   const score = !typed ? 0 : !isV ? (R.mode === 'romaji' ? kanjiReadAnswer(it, typed) : matchMeaning(typed, it.m))
-    : R.mode === 'mean' ? matchMeaning(typed, it.m) : jpAnswer(it, typed);
+    : R.mode === 'mean' ? matchMeaning(typed, it.m) : R.mode === 'jp' ? jpByMeaning(it, typed) : jpAnswer(it, typed);
   let g = autoGrade(score, secs, R.typed.length);
   if (R.intro.has(it.id)) g = Math.min(g, 3); // baru dikenalkan barusan: belum bisa "Mudah"
   R.prev = S.cards[it.id];
@@ -1215,7 +1236,10 @@ function vQuiz() {
     </div></div>`;
 }
 function distract(item, list, key) {
-  const same = shuffle(list.filter(x => x !== item && x.theme === item.theme)), other = shuffle(list.filter(x => x !== item && x.theme !== item.theme));
+  // pilihan pengecoh tidak boleh punya arti yang sama (maaf/permisi, langit/kosong), supaya jawaban benar cuma satu
+  const alt = m => m.toLowerCase().split('/').map(a => a.replace(/\(.*?\)/g, '').trim()), mine = alt(item.m);
+  const ok = x => x !== item && !alt(x.m).some(a => mine.includes(a));
+  const same = shuffle(list.filter(x => ok(x) && x.theme === item.theme)), other = shuffle(list.filter(x => ok(x) && x.theme !== item.theme));
   const out = [], seen = new Set([item[key]]);
   for (const x of [...same, ...other]) { if (!seen.has(x[key])) { seen.add(x[key]); out.push(x); } if (out.length === 3) break; }
   return out;
@@ -1257,7 +1281,7 @@ function quizTyped(skip) {
   if (!Q || Q.state !== 'run' || Q.lock || !Q.cur.typed) return;
   const it = Q.cur.item, val = skip ? '' : validAnswer(Q.cur.typed, kbIn()?.value || '');
   if (val === null || (!val && !skip)) return;
-  Q.lock = true; const ok = !!val && jpAnswer(it, val) > 0, fb = $('#qfb');
+  Q.lock = true; const ok = !!val && (Q.cur.typed === 'jp' ? jpByMeaning : jpAnswer)(it, val) > 0, fb = $('#qfb');
   if (fb) { fb.style.color = ok ? 'var(--good)' : 'var(--bad)'; fb.innerHTML = `${ok ? '✓ Benar!' : '✗ Jawaban:'} <span class="jp"><ruby>${it.w}<rt>${it.w === it.r ? '' : it.r}</rt></ruby></span> (${toRomaji(it.r)})`; }
   quizResult(ok, ok ? 700 : 2200);
 }
@@ -1329,8 +1353,18 @@ function runTests() {
   eq(matchMeaning('halo', 'selamat siang/halo'), 2, 'alternatif arti');
   eq(matchMeaning('ibu', 'ayah (sendiri)'), 0, 'jawaban salah');
   eq(matchMeaning('perpustakan', 'perpustakaan'), 1, 'typo 1 huruf');
+  eq(matchMeaning('memakan', 'makan'), 2, 'me+makan'); eq(matchMeaning('meminum', 'minum'), 2, 'me+minum'); eq(matchMeaning('makan', 'memakan'), 2, 'dasar dari me-');
+  eq(matchMeaning('mendengarkan', 'mendengar/bertanya'), 2, '-kan'); eq(matchMeaning('senang', 'menyenangkan'), 2, 'meny-kan');
+  eq(matchMeaning('anak-anak', 'anak'), 2, 'ulang'); eq(matchMeaning('buah-buahan', 'buah'), 2, 'ulang -an'); eq(matchMeaning('dimana', 'di mana'), 2, 'tanpa spasi');
+  eq(matchMeaning('10.000', 'sepuluh ribu'), 2, 'angka bertitik'); eq(matchMeaning('susah', 'sulit'), 2, 'sinonim'); eq(matchMeaning('mengapa', 'kenapa'), 2, 'sinonim 2');
+  eq(matchMeaning('kenal', 'terkenal'), 0, 'ter- tidak dipotong'); eq(matchMeaning('pakaian', 'memakai'), 0, '-an bukan kata kerja');
+  let s2 = schedule({}, 3, 0); for (let i = 0; i < 3; i++) s2 = schedule(s2, 2, 0); eq(s2.ivl, 4, 'Sulit tetap naik 1 hari');
+  const vMaaf = VOCAB.find(v => v.w === 'ごめんなさい'), vSumi = VOCAB.find(v => v.w === 'すみません'), vAru = VOCAB.find(v => v.w === 'ある'), vAsa = VOCAB.find(v => v.w === '朝');
+  eq(jpByMeaning(vMaaf, 'すみません'), 2, 'maaf → すみません'); eq(jpByMeaning(vSumi, 'ごめんなさい'), 0, 'permisi/maaf ≠ ごめんなさい');
+  eq(jpByMeaning(vAru, 'いる'), 0, 'ada (benda) ≠ いる'); eq(jpByMeaning(vAsa, 'ごぜん'), 2, 'pagi → 午前');
+  eq(distract(vMaaf, VOCAB, 'w').includes(vSumi), false, 'pengecoh tidak bersinonim'); eq(matchReading('sensē', 'せんせい'), 2, 'ē = ei');
   eq(toRomaji('べんきょう'), 'benkyou', 'romaji yoon'); eq(toRomaji('ちょっと'), 'chotto', 'romaji sokuon'); eq(toRomaji('パン'), 'pan', 'romaji katakana');
-  eq(matchReading('benkyou', 'べんきょう'), 2, 'baca tepat'); eq(matchReading('benkyo', 'べんきょう'), 1, 'vokal panjang hilang');
+  eq(matchReading('benkyou', 'べんきょう'), 2, 'baca tepat'); eq(matchReading('benkyo', 'べんきょう'), 2, 'vokal panjang boleh tidak ditulis');
   eq(matchReading('gakkou', 'がっこう'), 2, 'baca っ'); eq(matchReading('tyotto', 'ちょっと'), 2, 'kunrei');
   eq(matchReading('sennsei', 'せんせい'), 2, 'nn'); eq(matchReading('しんぶん', 'しんぶん'), 2, 'input kana');
   eq(matchReading('toshokan', 'としょかん'), 2, 'sho'); eq(matchReading('jikan', 'じかん'), 2, 'ji'); eq(matchReading('neko', 'いぬ'), 0, 'baca salah');
