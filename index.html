@@ -1951,8 +1951,10 @@ const newLeft = () => Math.max(0, Math.min(S.newPerDay - S.newToday, freshItems(
 // urutan sesi: kartu baru dulu, lalu kartu jatuh tempo; kartu yang dijawab salah dipindah ke akhir sesi (lihat check)
 const queueOrder = () => [...freshItems().slice(0, newLeft()), ...dueItems()];
 function buildQueue() { rollDay(); return queueOrder(); }
-// salah: pindah ke akhir sesi, setelah semua kartu lain. Kalau ini kartu terakhir, tidak diulang langsung (jadwalnya tetap 10 menit lagi)
-const requeueWrong = (s, it) => { if (s.i < s.q.length - 1) s.q.push(it); };
+// salah: ditanyakan lagi di akhir sesi, paling cepat setelah REASK_GAP kartu lain. Kalau sisa sesi lebih pendek,
+// kartu tidak diulang di sesi ini dan menunggu jadwal SRS-nya (10 menit lagi)
+const REASK_GAP = 10;
+const requeueWrong = (s, it) => { if (s.q.length - 1 - s.i >= REASK_GAP) s.q.push(it); };
 
 /* ================= VIEWS ================= */
 const NAV = [['home', '🏠', 'Beranda'], ['review', '🔁', 'Review'], ['vocab', '📖', 'Kosakata'], ['kanji', '漢', 'Kanji'], ['grammar', '🧩', 'Grammar'], ['quiz', '⚡', 'Kuis']];
@@ -2301,7 +2303,7 @@ const HELP = [
   ['nilai', '🎯 Penilaian jawaban: Lupa · Sulit · Bagus · Mudah', `
     <p>Setiap jawaban di Review dinilai otomatis dari <b>ketepatan</b> dan <b>kecepatan</b>. Nilainya menentukan kapan kartu itu muncul lagi.</p>
     <table><tr><th>Nilai</th><th>Kriteria</th><th>Muncul lagi</th></tr>
-      <tr><td>✗ Lupa</td><td>Jawaban salah, kosong, atau menekan "Tidak tahu".</td><td>10 menit lagi. Di sesi yang sama, kartu ini dipindah ke paling belakang dan ditanyakan lagi setelah semua kartu lain. Jaraknya dihitung dari awal lagi.</td></tr>
+      <tr><td>✗ Lupa</td><td>Jawaban salah, kosong, atau menekan "Tidak tahu".</td><td>Di sesi yang sama, kartu ini dipindah ke paling belakang dan baru ditanyakan lagi setelah minimal 10 kartu lain. Kalau sisa sesi kurang dari itu, kartu ini muncul di sesi berikutnya (jadwalnya 10 menit lagi). Jaraknya dihitung dari awal lagi.</td></tr>
       <tr><td>😅 Sulit</td><td>Benar, tapi ada salah ketik kecil atau butuh lebih dari 20 detik.</td><td>Jaraknya hanya bertambah sedikit (minimal 1 hari).</td></tr>
       <tr><td>✓ Bagus</td><td>Benar dengan waktu biasa.</td><td>Besok, lalu 3 hari lagi, lalu sekitar 2,5× jarak sebelumnya.</td></tr>
       <tr><td>⚡ Mudah</td><td>Benar dan cepat: kira-kira 4 detik ditambah 0,2 detik per huruf yang diketik.</td><td>3 hari lagi, lalu jaraknya melebar lebih cepat daripada Bagus.</td></tr></table>
@@ -2671,8 +2673,8 @@ function runTests() {
     const qo = queueOrder(); eq(!S.cards[qo[0].id], true, 'kartu baru didahulukan'); eq(qo[qo.length - 1], VOCAB[5], 'kartu jatuh tempo setelah kartu baru');
   } finally { S = keep; }
   const sv = S.voice; S.voice = false; for (let i = 0; i < 60; i++) if (genQ().audio) { S.voice = sv; throw new Error('soal dengar muncul saat suara mati'); } S.voice = sv;
-  const rq1 = { q: ['a', 'b', 'c'], i: 0 }; requeueWrong(rq1, 'a'); eq(rq1.q.join(''), 'abca', 'kartu salah pindah ke akhir sesi');
-  const rq2 = { q: ['a', 'b'], i: 1 }; requeueWrong(rq2, 'b'); eq(rq2.q.join(''), 'ab', 'kartu terakhir tidak langsung diulang');
+  const rq1 = { q: [...'abcdefghijk'], i: 0 }; requeueWrong(rq1, 'a'); eq(rq1.q.join(''), 'abcdefghijka', 'kartu salah ke akhir, minimal 10 kartu kemudian');
+  const rq2 = { q: [...'abcdefghij'], i: 0 }; requeueWrong(rq2, 'a'); eq(rq2.q.join(''), 'abcdefghij', 'sisa < 10 kartu: tidak diulang di sesi ini');
   const T0 = TRACKS[0].id, TL = TRACKS[TRACKS.length - 1].id;
   eq(nextId(T0, 'all'), TRACKS[1].id, 'musik berurutan'); eq(nextId(TL, 'all'), T0, 'musik kembali ke awal');
   for (let i = 0; i < 30; i++) if (nextId(T0, 'shuffle') === T0) throw new Error('acak memutar lagu yang sama');
