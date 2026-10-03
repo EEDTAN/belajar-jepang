@@ -60,6 +60,8 @@ nav a .ic{margin-right:6px}
 .tbtn{width:38px;height:38px;border-radius:12px;background:var(--glass);border:1px solid var(--line);font:700 15px 'Noto Sans JP';transition:.2s}
 .tbtn:hover{transform:translateY(-2px)}
 .tbtn.off{opacity:.45;text-decoration:line-through}
+.tbtn.on{background:var(--grad);color:#fff;border-color:transparent}
+@media (max-width:400px){.tbtn{width:34px;height:34px}.brand small{display:none}}
 @media (max-width:760px){
   nav{position:fixed;bottom:0;left:0;right:0;margin:0;justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom));
     background:var(--solid);border-top:1px solid var(--line);box-shadow:0 -8px 30px rgba(0,0,0,.12);z-index:30}
@@ -250,6 +252,14 @@ details.info p{margin:6px 0}
   padding:12px 20px;border-radius:16px;box-shadow:var(--shadow);font-weight:700;transition:.35s cubic-bezier(.2,1.4,.4,1);pointer-events:none;max-width:calc(100vw - 32px)}
 #toast.show{transform:translate(-50%,0);opacity:1}
 @media (max-width:760px){#toast{bottom:92px}}
+
+/* mini player musik */
+#dock{position:fixed;left:16px;bottom:16px;z-index:40;display:flex;gap:10px;align-items:center;padding:8px;border-radius:18px;background:var(--solid);border:1px solid var(--line);box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+#dock:not(.show){left:-9999px} /* di luar layar, bukan display:none, supaya pemutar YouTube tetap termuat */
+#dock iframe{width:200px;height:113px;border:0;border-radius:12px;display:block;flex:none}
+.dk{min-width:0}.dk b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dk small{color:var(--muted);font-size:12px}
+body.music main{padding-bottom:170px}
+@media (max-width:760px){#dock{bottom:calc(76px + env(safe-area-inset-bottom))}#dock iframe{width:160px;height:90px}#dock .tbtn{width:34px;height:34px}body.music main{padding-bottom:240px!important}}
 .cf{position:fixed;top:-14px;width:9px;height:14px;border-radius:2px;z-index:99;pointer-events:none;animation:cf linear forwards}
 @keyframes cf{to{transform:translate(var(--dx),105vh) rotate(var(--r))}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -261,12 +271,16 @@ details.info p{margin:6px 0}
   <nav id="nav"></nav>
   <div class="tools">
     <button class="tbtn" id="furiBtn" title="Tampilkan/sembunyikan furigana" onclick="toggleFuri()">ふ</button>
+    <button class="tbtn" id="voiceBtn" title="Suara pengucapan otomatis aktif/mati" onclick="toggleVoice()">🔊</button>
+    <button class="tbtn" id="musicBtn" title="Musik belajar" onclick="openMusic()">🎵</button>
     <button class="tbtn" title="Ganti tema terang/gelap" onclick="toggleTheme()">◐</button>
   </div>
 </div></header>
 <main id="main"></main>
 <div id="toast"></div>
 <div id="modal"></div>
+<div id="dock"><div id="yt"></div><div class="dk"><b id="dkT"></b><small>dari YouTube</small>
+  <div class="row" style="gap:6px;margin-top:6px"><button class="tbtn" id="dkP" title="Jeda/lanjut" onclick="ytToggle()">⏸</button><button class="tbtn" title="Lagu berikutnya" onclick="nextTrack()">⏭</button><button class="tbtn" id="dkL" onclick="cycleLoop()">🔁</button><button class="tbtn" title="Matikan musik" onclick="stopMusic()">✕</button></div></div></div>
 
 <script>
 /* ================= DATA ================= */
@@ -641,7 +655,7 @@ const ymd = d => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 const today = () => ymd(new Date());
 const yesterday = () => ymd(new Date(Date.now() - DAY));
 const wordHTML = v => v.w === v.r ? v.w : `<ruby>${v.w}<rt>${v.r}</rt></ruby>`;
-const spk = t => `<button class="spk" title="Dengarkan" onclick="event.stopPropagation();speak('${t}')">🔊</button>`;
+const spk = t => `<button class="spk" title="Dengarkan" onclick="event.stopPropagation();speak('${t}',1)">🔊</button>`;
 
 function lev(a, b) {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
@@ -738,7 +752,7 @@ const fmtIvl = c => c.ivl === 0 ? 'dalam 10 menit (sesi ini)' : c.ivl === 1 ? 'b
 const status = id => { const c = S.cards[id]; return !c ? 'n' : c.ivl >= 21 ? 'm' : 'l'; };
 
 /* ================= STATE ================= */
-const defaults = () => ({ cards: {}, xp: 0, streak: 0, lastDay: null, day: null, newToday: 0, doneToday: 0, newPerDay: 10, goal: 20, furi: true, focus: null, grammar: {}, best: 0, goalDay: null, theme: null });
+const defaults = () => ({ cards: {}, xp: 0, streak: 0, lastDay: null, day: null, newToday: 0, doneToday: 0, newPerDay: 10, goal: 20, furi: true, focus: null, grammar: {}, best: 0, goalDay: null, theme: null, voice: true, vol: .5, loop: 'all' });
 function load() { try { return { ...defaults(), ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { return defaults(); } }
 // local=true: simpan di perangkat ini saja (tanpa menandai "lebih baru" dan tanpa kirim ke server)
 function save(local) {
@@ -761,12 +775,83 @@ function checkGoal() {
 let jaVoice = null, warnedVoice = false;
 function pickVoice() { if ('speechSynthesis' in window) jaVoice = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)) || null; }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function speak(t) {
+// force=1: tombol 🔊 yang ditekan sendiri tetap bersuara walau suara otomatis dimatikan
+function speak(t, force) {
+  if (!S.voice && !force) return;
   if (!('speechSynthesis' in window)) return toast('Browser ini tidak mendukung suara.');
   if (!jaVoice && !warnedVoice) { warnedVoice = true; toast('Suara Jepang belum terpasang — pasang di Pengaturan Windows › Waktu & bahasa › Ucapan.'); }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(t); u.lang = 'ja-JP'; if (jaVoice) u.voice = jaVoice; u.rate = .85;
   speechSynthesis.speak(u);
+}
+
+/* ================= MUSIK BELAJAR (YouTube) ================= */
+// Semua id sudah dicek bisa di-embed (2026-10-03). Siaran langsung 24 jam kadang diganti id baru oleh pemiliknya.
+const TRACKS = [
+  { id: 'jfKfPfyJRdk', t: '📚 Lofi Belajar', d: 'Lofi Girl · siaran langsung 24 jam' },
+  { id: 'Na0w3Mz46GA', t: '⛩️ Lofi Asia', d: 'Lofi Girl · nuansa Jepang & Asia, siaran langsung' },
+  { id: 'HuFYqnbVbzY', t: '🎷 Jazz Lofi', d: 'Lofi Girl · jazz santai, siaran langsung' },
+  { id: '5yx6BWlEVcY', t: '🐾 Chillhop Radio', d: 'Chillhop Music · jazzy & lofi, siaran langsung' },
+  { id: 'lTRiuFIWV54', t: '🕐 1 A.M Study Session', d: 'Lofi Girl · kumpulan lagu belajar malam' },
+  { id: '1fueZCTYkpA', t: '☕ Morning Coffee', d: 'Lofi Girl · lofi pagi yang ringan' },
+  { id: 'rUxyKA_-grg', t: '💤 Lofi Santai', d: 'Lofi Girl · lebih pelan & tenang, siaran langsung' },
+  { id: '4xDzrJKXOOY', t: '🌌 Synthwave', d: 'Lofi Girl · synthwave retro, siaran langsung' },
+  { id: '-5ajVJ1Yxlg', t: '🎹 Piano & Hujan', d: 'Soothing Relaxation · piano dengan suara hujan' },
+  { id: '4khIPP--FDU', t: '🎹 Piano Relaksasi', d: 'Ocb Relax · piano lembut' },
+  { id: 'mPZkdNFkNps', t: '🌧️ Suara Hujan', d: 'Relaxing Ambience · hujan di jendela, tanpa musik' },
+];
+const LOOPS = { one: ['🔂', 'Ulang 1 lagu'], all: ['🔁', 'Putar semua berurutan'], shuffle: ['🔀', 'Acak semua'] };
+let yt = null, ytReady = null, playing = null, fails = 0;
+function loadYT() {
+  return ytReady ||= new Promise(res => {
+    window.onYouTubeIframeAPIReady = () => {
+      yt = new YT.Player('yt', { width: 200, height: 113, playerVars: { playsinline: 1, rel: 0 }, events: {
+        onReady: res,
+        onStateChange: e => {
+          $('#dkP').textContent = e.data === 1 ? '⏸' : '▶';
+          if (e.data === 1) fails = 0;
+          if (e.data === 0) S.loop === 'one' ? (yt.seekTo(0), yt.playVideo()) : nextTrack(); // 0 = lagu selesai
+        },
+        onError: () => { // lewati lagu yang rusak, tapi berhenti kalau semuanya gagal (mis. internet putus)
+          if (S.loop !== 'one' && ++fails < TRACKS.length) { toast('Lagu ini tidak bisa diputar, lanjut ke berikutnya.'); nextTrack(); }
+          else { fails = 0; toast('Musik ini sedang tidak bisa diputar, coba judul lain.'); stopMusic(); }
+        },
+      } });
+    };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api';
+    s.onerror = () => { ytReady = null; stopMusic(); toast('Musik butuh koneksi internet.'); };
+    document.head.append(s);
+  });
+}
+async function playMusic(id) {
+  if (playing === id) return stopMusic();
+  playing = id; updateMusicUI();
+  await loadYT(); if (playing !== id) return;
+  yt.setVolume(S.vol * 100); yt.loadVideoById(id);
+}
+function stopMusic() { playing = null; yt?.stopVideo(); updateMusicUI(); }
+const nextId = (cur, mode) => mode === 'shuffle' ? pick(TRACKS.filter(x => x.id !== cur)).id : TRACKS[(TRACKS.findIndex(x => x.id === cur) + 1) % TRACKS.length].id;
+function nextTrack() { const n = nextId(playing, S.loop); playing = null; playMusic(n); }
+function setLoop(m) { S.loop = m; save(); updateMusicUI(); toast(LOOPS[m].join(' ')); }
+function cycleLoop() { const k = Object.keys(LOOPS); setLoop(k[(k.indexOf(S.loop) + 1) % k.length]); }
+function ytToggle() { if (yt) yt.getPlayerState() === 1 ? yt.pauseVideo() : yt.playVideo(); }
+function setVol(v) { S.vol = +v; yt?.setVolume(S.vol * 100); save(); }
+function updateMusicUI() {
+  const t = TRACKS.find(x => x.id === playing);
+  $('#dock').classList.toggle('show', !!t); document.body.classList.toggle('music', !!t); $('#musicBtn').classList.toggle('on', !!t);
+  if (t) $('#dkT').textContent = t.t;
+  const l = LOOPS[S.loop] || LOOPS.all, lb = $('#dkL'); lb.textContent = l[0]; lb.title = l[1] + ' (ketuk untuk ganti)';
+  if ($('#modal').innerHTML) openMusic();
+}
+function openMusic() {
+  loadYT(); // muat pemutar lebih awal supaya lagu langsung jalan saat dipilih
+  $('#modal').innerHTML = `<div class="modal" onclick="if(event.target===this)closeModal()"><div class="card">
+    <div class="row"><h2 style="margin:0">🎵 Musik Belajar</h2><span class="sp"></span><button class="tbtn" onclick="closeModal()">✕</button></div>
+    <p class="muted" style="margin:4px 0 14px;font-size:14px">Musik diputar dari YouTube, jadi butuh internet. Musik tetap jalan saat kamu pindah halaman. Ketuk judul yang sedang diputar untuk berhenti.</p>
+    <div class="grid" style="gap:8px">${TRACKS.map(x => `<button class="gi ${playing === x.id ? 'done' : ''}" onclick="playMusic('${x.id}')"><span class="n">${playing === x.id ? '■' : '▶'}</span><div><b>${x.t}</b><div class="muted">${x.d}</div></div></button>`).join('')}</div>
+    <div class="row" style="gap:6px;margin-top:16px">${Object.entries(LOOPS).map(([k, [ic, lbl]]) => `<button class="chip ${S.loop === k ? 'on' : ''}" onclick="setLoop('${k}')">${ic} ${lbl}</button>`).join('')}</div>
+    <label class="row" style="margin-top:12px">🔉 Volume <input type="range" min="0" max="1" step="0.05" value="${S.vol}" oninput="setVol(this.value)" style="flex:1"></label>
+  </div></div>`;
 }
 
 /* ================= FX ================= */
@@ -867,6 +952,8 @@ function vHome() {
       <div class="row" style="gap:18px">
         <label>Kartu baru/hari <select onchange="setOpt('newPerDay',this.value)">${[5, 10, 15, 20, 30].map(n => `<option ${n === S.newPerDay ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <label>Target review/hari <select onchange="setOpt('goal',this.value)">${[10, 20, 30, 50, 100].map(n => `<option ${n === S.goal ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <button class="btn ghost" onclick="toggleVoice()">${S.voice ? '🔊 Suara otomatis: Aktif' : '🔇 Suara otomatis: Mati'}</button>
+        <button class="btn ghost" onclick="openMusic()">🎵 Musik belajar</button>
         <span class="sp"></span>
         <button class="btn ghost" onclick="resetAll()">🗑️ Reset progres</button>
       </div>
@@ -1247,7 +1334,7 @@ function distract(item, list, key) {
 function genQ() {
   const seenV = VOCAB.filter(v => S.cards[v.id]), seenK = KANJI.filter(k => S.cards[k.id]);
   const vp = seenV.length >= 12 ? seenV : VOCAB, kp = seenK.length >= 8 ? seenK : KANJI.slice(0, 30);
-  const kind = pick(['jp', 'id', 'audio', 'kanji', 'romaji', 'kana']);
+  const kind = pick(['jp', 'id', 'kanji', 'romaji', 'kana', ...(S.voice ? ['audio'] : [])]); // soal dengar hanya saat suara aktif
   if (kind === 'kanji') {
     const k = pick(kp), opts = shuffle([k, ...distract(k, KANJI, 'm')]);
     return { item: k, label: 'Arti kanji ini?', prompt: k.c, cls: 'kchar', opts: opts.map(x => esc(x.m)), a: opts.indexOf(k) };
@@ -1258,7 +1345,7 @@ function genQ() {
   if (kind === 'jp') { const o = shuffle([v, ...distract(v, VOCAB, 'm')]); return { item: v, label: 'Apa artinya?', prompt: wordHTML(v), cls: '', opts: o.map(x => esc(x.m)), a: o.indexOf(v) }; }
   const o = shuffle([v, ...distract(v, VOCAB, 'w')]);
   if (kind === 'id') return { item: v, label: 'Mana kata Jepangnya?', prompt: esc(v.m), cls: 'id', opts: o.map(x => x.w), a: o.indexOf(v) };
-  return { item: v, label: 'Dengarkan — kata apa ini?', prompt: `<button class="spk" style="width:90px;height:90px;font-size:38px" onclick="speak('${v.r}')">🔊</button>`, cls: '', opts: o.map(x => x.w), a: o.indexOf(v), audio: v.r };
+  return { item: v, label: 'Dengarkan — kata apa ini?', prompt: `<button class="spk" style="width:90px;height:90px;font-size:38px" onclick="speak('${v.r}',1)">🔊</button>`, cls: '', opts: o.map(x => x.w), a: o.indexOf(v), audio: v.r };
 }
 function startQuiz() {
   Q = { state: 'run', score: 0, combo: 0, maxCombo: 0, right: 0, total: 0, t0: Date.now(), cur: genQ(), lock: false };
@@ -1329,12 +1416,18 @@ document.addEventListener('keydown', e => {
 function setOpt(k, v) { S[k] = +v; save(); R = null; render(); }
 function resetAll() { if (confirm('Hapus semua progres? Tindakan ini tidak bisa dibatalkan.')) { S = defaults(); save(); R = null; GS = null; applyPrefs(); render(); toast('Progres direset.'); } }
 function toggleFuri() { S.furi = !S.furi; save(); applyPrefs(); }
+function toggleVoice() {
+  S.voice = !S.voice; save(); applyPrefs(); if (route() === 'home') render();
+  if (!S.voice) window.speechSynthesis?.cancel();
+  toast(S.voice ? '🔊 Suara pengucapan otomatis aktif' : '🔇 Suara otomatis mati — tombol 🔊 masih bisa ditekan');
+}
 function toggleTheme() {
   const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   S.theme = cur === 'dark' ? 'light' : 'dark'; save(); applyPrefs();
 }
 function applyPrefs() {
   document.body.classList.toggle('nofuri', !S.furi); $('#furiBtn').classList.toggle('off', !S.furi);
+  const vb = $('#voiceBtn'); vb.textContent = S.voice ? '🔊' : '🔇'; vb.classList.toggle('off', !S.voice);
   if (S.theme) document.documentElement.dataset.theme = S.theme; else delete document.documentElement.dataset.theme;
 }
 
@@ -1382,6 +1475,11 @@ function runTests() {
   SENTENCES.forEach(([jp]) => { if (/[\u4e00-\u9fff]/.test(jp.replace(RB, ''))) throw new Error('kanji tanpa furigana: ' + jp); });
   eq(autoGrade(0, 3, 5), 1, 'salah=Lupa'); eq(autoGrade(1, 3, 5), 2, 'typo=Sulit'); eq(autoGrade(2, 25, 5), 2, 'lambat=Sulit');
   eq(autoGrade(2, 4, 5), 4, 'cepat=Mudah'); eq(autoGrade(2, 9, 5), 3, 'normal=Bagus');
+  const sv = S.voice; S.voice = false; for (let i = 0; i < 60; i++) if (genQ().audio) { S.voice = sv; throw new Error('soal dengar muncul saat suara mati'); } S.voice = sv;
+  const T0 = TRACKS[0].id, TL = TRACKS[TRACKS.length - 1].id;
+  eq(nextId(T0, 'all'), TRACKS[1].id, 'musik berurutan'); eq(nextId(TL, 'all'), T0, 'musik kembali ke awal');
+  for (let i = 0; i < 30; i++) if (nextId(T0, 'shuffle') === T0) throw new Error('acak memutar lagu yang sama');
+  eq(new Set(TRACKS.map(x => x.id)).size, TRACKS.length, 'id musik unik');
   eq(kana('私[わたし]は 学生[がくせい]です。'), 'わたしはがくせいです。', 'kana()');
   eq(furi('学生[がくせい]'), '<ruby>学生<rt>がくせい</rt></ruby>', 'furi()');
   eq(new Set(VOCAB.map(v => v.id)).size, VOCAB.length, 'id kosakata unik');
