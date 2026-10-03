@@ -184,7 +184,7 @@ details.info p{margin:6px 0}
 .help ul{margin:6px 0;padding-left:18px}.help li{margin:4px 0}
 .kb{margin-top:12px;padding:8px;border-radius:18px;background:var(--glass);border:1px solid var(--line)}
 .kbg{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}
-.kbf{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.4fr 2fr;gap:4px;margin-top:6px}
+.kbf{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr 1.3fr 2fr;gap:4px;margin-top:6px}
 .kk{font:600 17px 'Noto Sans JP';padding:7px 0;border-radius:10px;background:var(--solid);border:1px solid var(--line);box-shadow:0 2px 0 var(--line)}
 .kk:active{transform:translateY(2px);box-shadow:none}
 .kk.ok{background:var(--grad);color:#fff;border:0;font:800 14px 'Plus Jakarta Sans'}
@@ -2075,24 +2075,31 @@ function kanjiInfo(k) {
 const KBC = ['あいうえお', 'かきくけこ', 'さしすせそ', 'たちつてと', 'なにぬねの', 'はひふへほ', 'まみむめも', 'や゠ゆ゠よ', 'らりるれろ', 'わ゠゠゠を', 'ん゠゠゠゠'];
 const DAK = 'かがきぎくぐけげこごさざしじすずせぜそぞただちぢつづてでとどはばひびふぶへべほぼ', HAN = 'はぱひぴふぷへぺほぽ', SMALL = 'あぁいぃうぅえぇおぉやゃゆゅよょつっ';
 const kkey = (label, fn) => `<button type="button" class="kk" onmousedown="event.preventDefault()" onclick="${fn}">${label}</button>`;
+let KB_KATA = false; // keyboard di layar: false = hiragana, true = katakana (tombol カナ)
+const toKata = s => s.replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+const kbCh = c => KB_KATA ? toKata(c) : c;
 function kbHTML() {
   let g = '';
-  for (let r = 0; r < 5; r++) g += KBC.map(c => c[r] === '゠' ? '<span></span>' : kkey(c[r], `kb('${c[r]}')`)).join('');
+  for (let r = 0; r < 5; r++) g += KBC.map(c => c[r] === '゠' ? '<span></span>' : kkey(kbCh(c[r]), `kb('${kbCh(c[r])}')`)).join('');
   return `<div class="kb"><div class="kbg">${g}</div><div class="kbf">
-    ${kkey('゛', 'kbMod(DAK)')}${kkey('゜', 'kbMod(HAN)')}${kkey('小', 'kbMod(SMALL)')}${kkey('ー', "kb('ー')")}${kkey('⌫', 'kbDel()')}
+    ${kkey(KB_KATA ? 'かな' : 'カナ', 'kbKata()')}${kkey('゛', 'kbMod(DAK)')}${kkey('゜', 'kbMod(HAN)')}${kkey('小', 'kbMod(SMALL)')}${kkey('ー', "kb('ー')")}${kkey('⌫', 'kbDel()')}
     <button type="button" class="kk ok" onmousedown="event.preventDefault()" onclick="kbEnter()">Periksa ↵</button></div>
-    <div class="hint" style="margin-top:6px">゛ ゜ 小 mengubah huruf terakhir (か→が, は→ぱ, つ→っ).</div></div>`;
+    <div class="hint" style="margin-top:6px">゛ ゜ 小 mengubah huruf terakhir (か→が, は→ぱ, つ→っ). <b>${KB_KATA ? 'かな' : 'カナ'}</b> = ganti ke ${KB_KATA ? 'hiragana' : 'katakana'}. Kata katakana juga boleh dijawab dengan hiragana.</div></div>`;
 }
+function kbKata() { KB_KATA = !KB_KATA; const k = $('.kb'); if (k) k.outerHTML = kbHTML(); } // isi jawaban tidak hilang
 const kbIn = () => $('#ansIn');
 function kb(ch) { const i = kbIn(); if (i) i.value += ch; }
 function kbDel() { const i = kbIn(); if (i) i.value = i.value.slice(0, -1); }
-function kbMod(pairs) {
-  const i = kbIn(); if (!i) return; const l = i.value.slice(-1);
+// ubah huruf terakhir lewat pasangan (か↔が, つ↔っ); katakana ikut: カ↔ガ, ツ↔ッ
+const modLast = (l, pairs) => {
+  const kata = /[ァ-ヶ]/.test(l), h = kata ? toHira(l) : l;
   for (let k = 0; k < pairs.length; k += 2) {
-    if (l === pairs[k]) return i.value = i.value.slice(0, -1) + pairs[k + 1];
-    if (l === pairs[k + 1]) return i.value = i.value.slice(0, -1) + pairs[k];
+    const r = h === pairs[k] ? pairs[k + 1] : h === pairs[k + 1] ? pairs[k] : null;
+    if (r) return kata ? toKata(r) : r;
   }
-}
+  return null;
+};
+function kbMod(pairs) { const i = kbIn(); if (!i) return; const r = modLast(i.value.slice(-1), pairs); if (r) i.value = i.value.slice(0, -1) + r; }
 function kbEnter() { if (route() === 'review') check(); else if (route() === 'quiz') quizTyped(); }
 const jpAnswer = (it, typed) => typed === it.w ? 2 : matchReading(typed, it.r);
 // soal arti→Jepang: kata lain yang artinya mencakup soal juga benar ("maaf" → すみません atau ごめんなさい)
@@ -2329,7 +2336,7 @@ const HELP = [
     <ul><li>sinonim umum dan bentuk kata dasar (makan = memakan, susah = sulit);</li>
       <li>bagian arti yang ada di dalam kurung boleh tidak diketik;</li>
       <li>ejaan romaji Hepburn maupun Kunrei (shi/si, tsu/tu), dan vokal panjang boleh tidak ditulis (gakko);</li>
-      <li>kata katakana boleh diketik dengan hiragana; tanda ～, spasi, dan tanda baca tidak perlu diketik.</li></ul>
+      <li>kata katakana boleh diketik dengan hiragana, atau tekan tombol <b>カナ</b> di keyboard untuk mengetik katakana; tanda ～, spasi, dan tanda baca tidak perlu diketik.</li></ul>
     <p>Salah ketik kecil (biasanya satu huruf) pada kata yang agak panjang tetap dianggap benar, tapi nilainya menjadi Sulit. Kata yang pendek harus diketik tepat.</p>`],
   ['baru', '✨ Kartu baru & kartu jatuh tempo', `
     <ul><li><b>Kartu baru</b>: kata atau kanji yang belum pernah kamu pelajari. Jumlahnya per hari diatur di Pengaturan ("Kartu baru/hari", bawaannya 10). Kartu baru muncul dulu sebagai perkenalan, lalu diuji 2 kartu kemudian.</li>
@@ -2640,6 +2647,9 @@ function runTests() {
   eq(jpByMeaning(vAru, 'いる'), 0, 'ada (benda) ≠ いる'); eq(jpByMeaning(vAsa, 'ごぜん'), 2, 'pagi → 午前');
   eq(distract(vMaaf, VOCAB, 'w').includes(vSumi), false, 'pengecoh tidak bersinonim'); eq(matchReading('sensē', 'せんせい'), 2, 'ē = ei');
   eq(toRomaji('べんきょう'), 'benkyou', 'romaji yoon'); eq(toRomaji('ちょっと'), 'chotto', 'romaji sokuon'); eq(toRomaji('パン'), 'pan', 'romaji katakana');
+  eq(toKata('ぱーてぃー'), 'パーティー', 'keyboard katakana'); eq(modLast('カ', DAK), 'ガ', '゛ katakana'); eq(modLast('ハ', HAN), 'パ', '゜ katakana');
+  eq(modLast('ツ', SMALL), 'ッ', '小 katakana'); eq(modLast('が', DAK), 'か', '゛ bolak-balik'); eq(modLast('ー', DAK), null, 'ー tidak berubah');
+  eq(jpAnswer({ w: 'テレビ', r: 'テレビ' }, 'テレビ'), 2, 'jawab katakana'); eq(jpAnswer({ w: 'テレビ', r: 'テレビ' }, 'てれび'), 2, 'katakana via hiragana');
   eq(matchReading('benkyou', 'べんきょう'), 2, 'baca tepat'); eq(matchReading('benkyo', 'べんきょう'), 2, 'vokal panjang boleh tidak ditulis');
   eq(matchReading('gakkou', 'がっこう'), 2, 'baca っ'); eq(matchReading('tyotto', 'ちょっと'), 2, 'kunrei');
   eq(matchReading('sennsei', 'せんせい'), 2, 'nn'); eq(matchReading('しんぶん', 'しんぶん'), 2, 'input kana');
