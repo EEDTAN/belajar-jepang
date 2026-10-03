@@ -174,6 +174,14 @@ aside:empty{display:none}
 details.info{margin-top:10px;font-size:14px;padding:10px 14px;border-radius:14px;background:rgba(123,92,255,.08)}
 details.info summary{cursor:pointer;color:var(--violet);font-weight:700}
 details.info p{margin:6px 0}
+/* tombol ? keterangan + isi modal keterangan */
+.ib{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:6px;border-radius:50%;font:800 12px 'Plus Jakarta Sans',sans-serif;color:var(--violet);background:rgba(123,92,255,.14);vertical-align:middle;flex:none}
+.ib:hover{background:var(--violet);color:#fff}
+.vd .ib{color:#fff;background:rgba(255,255,255,.3)}
+.modal .card.help{max-width:620px}
+.help table{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0}
+.help th,.help td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.help ul{margin:6px 0;padding-left:18px}.help li{margin:4px 0}
 .kb{margin-top:12px;padding:8px;border-radius:18px;background:var(--glass);border:1px solid var(--line)}
 .kbg{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}
 .kbf{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.4fr 2fr;gap:4px;margin-top:6px}
@@ -1971,19 +1979,19 @@ function vHome() {
       <div class="lvl"><div><small>LEVEL</small><b>${L}</b></div></div>
       <div style="flex:1;min-width:220px">
         <h1 class="jp" style="font-size:clamp(28px,5vw,40px)"><span class="gt">${greet}</span></h1>
-        <div class="muted">${S.xp} XP · ${need - cur} XP lagi ke Level ${L + 1}</div>
+        <div class="muted">${S.xp} XP · ${need - cur} XP lagi ke Level ${L + 1}${helpBtn('xp')}</div>
         <div class="xpbar"><i style="width:${cur / need * 100}%"></i></div>
       </div>
       <a class="btn big" href="#review" onclick="R=null">▶ Mulai Review ${due + nl ? `(${due + nl})` : ''}</a>
     </section>
     <section class="grid g4">
-      <div class="card stat"><div class="ico" style="background:rgba(255,120,60,.15)">🔥</div><div><b>${streak()}</b><span class="muted">hari beruntun</span></div></div>
-      <div class="card stat"><div class="ico" style="background:rgba(123,92,255,.15)">📚</div><div><b>${due}</b><span class="muted">jatuh tempo</span></div></div>
-      <div class="card stat"><div class="ico" style="background:rgba(255,79,147,.15)">✨</div><div><b>${nl}</b><span class="muted">kartu baru</span></div></div>
-      <div class="card stat"><div class="ico" style="background:rgba(18,181,196,.15)">🏆</div><div><b>${S.best}</b><span class="muted">rekor kuis</span></div></div>
+      <div class="card stat"><div class="ico" style="background:rgba(255,120,60,.15)">🔥</div><div><b>${streak()}</b><span class="muted">hari beruntun${helpBtn('progres')}</span></div></div>
+      <div class="card stat"><div class="ico" style="background:rgba(123,92,255,.15)">📚</div><div><b>${due}</b><span class="muted">jatuh tempo${helpBtn('baru')}</span></div></div>
+      <div class="card stat"><div class="ico" style="background:rgba(255,79,147,.15)">✨</div><div><b>${nl}</b><span class="muted">kartu baru${helpBtn('baru')}</span></div></div>
+      <div class="card stat"><div class="ico" style="background:rgba(18,181,196,.15)">🏆</div><div><b>${S.best}</b><span class="muted">rekor kuis${helpBtn('kuis')}</span></div></div>
     </section>
     <section class="card">
-      <div class="row"><h2>📈 Progres</h2><span class="sp"></span><span class="muted">Hari ini: ${S.doneToday}/${S.goal} review</span></div>
+      <div class="row"><h2>📈 Progres${helpBtn('progres')}</h2><span class="sp"></span><span class="muted">Hari ini: ${S.doneToday}/${S.goal} review</span></div>
       <div class="grid g4" style="margin-top:10px">
         ${ring(S.doneToday / S.goal, 'Target Hari Ini', `${S.doneToday} / ${S.goal}`, '#ff4f93')}
         ${ring(cnt(VOCAB) / VOCAB.length, 'Kosakata', `${cnt(VOCAB)} dipelajari · ${mas(VOCAB)} hafal`, '#12b5c4')}
@@ -1993,7 +2001,7 @@ function vHome() {
     </section>
     <section class="grid g2">
       <div class="card">
-        <h2>🧠 Metode Dojo</h2>
+        <h2>🧠 Metode Dojo${helpBtn('nilai')}</h2>
         <ol class="method">
           <li><b>Spaced repetition</b> — kartu muncul lagi tepat saat kamu hampir lupa. Review tiap hari 10–15 menit; jangan ditumpuk.</li>
           <li><b>Active recall</b> — ketik arti atau bacaan (romaji/kana) sebelum melihat jawaban. Usaha mengingat = ingatan menguat.</li>
@@ -2003,7 +2011,7 @@ function vHome() {
         </ol>
       </div>
       <div class="card">
-        <h2>🗓️ Rencana Hari Ini</h2>
+        <h2>🗓️ Rencana Hari Ini${helpBtn('metode')}</h2>
         <div class="grid" style="gap:10px;margin-top:8px">
           <a class="gi ${due + nl ? '' : 'done'}" href="#review" onclick="R=null"><span class="n">1</span><div><b>Review SRS</b><div class="muted">${due + nl ? `${due} ulangan + ${nl} kartu baru` : 'Selesai ✓'}${cb ? ` · 📘 Bab ${cb}: ${VOCAB_BAB.filter(v => v.bab === cb && S.cards[v.id]).length}/${VOCAB_BAB.filter(v => v.bab === cb).length} kata` : ''}</div></div></a>
           ${nextG >= 0 ? `<a class="gi" href="#grammar/${nextG}"><span class="n">2</span><div><b>Grammar: <span class="jp">${GRAMMAR[nextG].t}</span></b><div class="muted">${babMode() ? `Bab ${GRAMMAR[nextG].b} · ` : ''}Pola ${gOrder().indexOf(nextG) + 1} dari ${GRAMMAR.length}</div></div></a>` : gWait ? `<a class="gi done" href="#grammar"><span class="n">2</span><div><b>Grammar sampai Bab ${cb} tuntas ✓</b><div class="muted">Pola Bab ${cb + 1} disarankan setelah kosakata Bab ${cb} selesai</div></div></a>` : `<div class="gi done"><span class="n">2</span><b>Semua grammar tuntas 🎉</b></div>`}
@@ -2012,13 +2020,14 @@ function vHome() {
       </div>
     </section>
     <section class="card">
-      <h2>⚙️ Pengaturan</h2>
+      <h2>⚙️ Pengaturan${helpBtn('tombol')}</h2>
       <div class="row" style="gap:18px">
-        <label>Metode belajar <select onchange="setMethod(this.value)"><option value="tema" ${babMode() ? '' : 'selected'}>🗂️ Per tema</option><option value="bab" ${babMode() ? 'selected' : ''}>📘 Per bab Minna no Nihongo I</option></select></label>
+        <label>Metode belajar <select onchange="setMethod(this.value)"><option value="tema" ${babMode() ? '' : 'selected'}>🗂️ Per tema</option><option value="bab" ${babMode() ? 'selected' : ''}>📘 Per bab Minna no Nihongo I</option></select>${helpBtn('metode')}</label>
         <label>Kartu baru/hari <select onchange="setOpt('newPerDay',this.value)">${[5, 10, 15, 20, 30].map(n => `<option ${n === S.newPerDay ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <label>Target review/hari <select onchange="setOpt('goal',this.value)">${[10, 20, 30, 50, 100].map(n => `<option ${n === S.goal ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <button class="btn ghost" onclick="toggleVoice()">${S.voice ? '🔊 Suara otomatis: Aktif' : '🔇 Suara otomatis: Mati'}</button>
         <button class="btn ghost" onclick="openMusic()">🎵 Musik belajar</button>
+        <button class="btn ghost" onclick="openHelp()">📖 Keterangan</button>
         <span class="sp"></span>
         <button class="btn ghost" onclick="resetAll()">🗑️ Reset progres</button>
       </div>
@@ -2087,9 +2096,9 @@ const MODES = {
   jp: ['あ', 'Jawab dengan huruf Jepang (kana)', 'm-jp'],
   romaji: ['Aa', 'Jawab cara bacanya dalam romaji', 'm-romaji'],
 };
-function modeBadge(m) {
+function modeBadge(m, help = true) { // help=false di Kuis: jangan buka keterangan saat waktu berjalan
   const [ic, txt, cls] = MODES[m];
-  return `<div class="mode ${cls}"><span>${ic}</span>${txt}</div>`;
+  return `<div class="mode ${cls}"><span>${ic}</span>${txt}${help ? helpBtn('soal') : ''}</div>`;
 }
 function inputAttrs(m, kanji) {
   if (m === 'jp') return 'placeholder="Ketuk huruf di keyboard Jepang ↓" readonly inputmode="none" lang="ja"';
@@ -2172,7 +2181,7 @@ function vReview() {
   const it = R.q[R.i], isV = it.type === 'v', intro = isIntro(R, it);
   let body, hint;
   if (intro) {
-    body = `<div class="muted">Kartu baru — pelajari dulu, nanti kamu diuji</div>
+    body = `<div class="muted">Kartu baru — pelajari dulu, nanti kamu diuji${helpBtn('baru')}</div>
       <div class="big ${isV ? '' : 'kchar'}">${isV ? wordHTML(it) : it.c}</div>
       <div class="mean" style="font-size:22px;font-weight:800">${esc(it.m)}</div>
       <div class="muted jp">${isV ? it.r : mainRead(it)} · ${toRomaji(isV ? it.r : mainRead(it))}</div>
@@ -2191,7 +2200,7 @@ function vReview() {
       const rd = isV ? it.r : mainRead(it), want = R.mode === 'mean' ? '' : ` · jawaban: ${rd} (${toRomaji(rd)})`;
       const why = !R.typed ? 'Tidak dijawab' + want : !score ? `Jawabanmu: "${esc(R.typed)}"${want}` : score === 1 ? `Hampir tepat: "${esc(R.typed)}"${want}` :
         g === 2 ? `Benar, tapi agak lama (${secs.toFixed(1)} dtk)` : g === 4 ? `Tepat & cepat (${secs.toFixed(1)} dtk)` : `Tepat (${secs.toFixed(1)} dtk)`;
-      body = q + `<div class="vd ${cls}"><span class="vi">${icon}</span><div><b>${label}</b><small>${why} · muncul lagi ${fmtIvl(S.cards[it.id])}</small></div></div>
+      body = q + `<div class="vd ${cls}"><span class="vi">${icon}</span><div><b>${label}${helpBtn('nilai')}</b><small>${why} · muncul lagi ${fmtIvl(S.cards[it.id])}</small></div></div>
         <div class="row" style="margin-top:14px">${g === 1 && R.typed ? `<button class="linkbtn" style="margin:0" onclick="overrule()">Jawabanku sebenarnya benar</button>` : ''}<span class="sp"></span>
         <button class="btn" onclick="nextCard()">Lanjut →</button></div>`;
       hint = 'Enter / Spasi untuk lanjut';
@@ -2199,7 +2208,7 @@ function vReview() {
   }
   const sides = intro || R.shown;
   return `<div class="rvgrid"><aside class="side-l">${sides ? explainHTML(it) : ''}</aside><div class="rv">
-    <div class="row" style="margin-bottom:8px"><b>Review</b><span class="sp"></span><span class="muted">${R.i + 1} / ${R.q.length}</span></div>
+    <div class="row" style="margin-bottom:8px"><b>Review</b>${helpBtn('baru')}<span class="sp"></span><span class="muted">${R.i + 1} / ${R.q.length}</span></div>
     <div class="prog"><i style="width:${R.i / R.q.length * 100}%"></i></div>
     <div class="card qcard" id="qc">
       <div class="tag"><span>${isV ? 'Kosakata' : 'Kanji'}</span>${S.cards[it.id] ? '' : '<span class="new">Baru</span>'}${intro ? '' : modeBadge(R.mode)}</div>
@@ -2247,11 +2256,11 @@ let VT = null; // kelompok (tema atau bab) yang sedang dibuka di halaman Kosakat
 function vVocab() {
   if (!groups().includes(VT)) VT = babMode() ? 'Bab ' + (curBab() || 1) : groups()[0];
   const inG = g => (babMode() ? VOCAB_BAB : VOCAB).filter(v => groupOf(v) === g), items = inG(VT), [What, what] = babMode() ? ['Bab', 'bab'] : ['Tema', 'tema'];
-  return `<div class="row"><h1>📖 Kosakata</h1><span class="sp"></span><span class="muted">${babMode() ? '📘 Urut per bab Minna no Nihongo I' : '🗂️ Urut per tema'} · klik kartu untuk membalik</span></div>
+  return `<div class="row"><h1>📖 Kosakata</h1><span class="sp"></span><span class="muted">${babMode() ? '📘 Urut per bab Minna no Nihongo I' : '🗂️ Urut per tema'} · klik kartu untuk membalik${helpBtn('status')}</span></div>
   <div class="chips">${groups().map(t => { const all = inG(t), n = all.filter(v => S.cards[v.id]).length;
     return `<button class="chip ${t === VT ? 'on' : ''}" onclick="VT='${t}';render()">${t} <small>${n}/${all.length}</small></button>`; }).join('')}</div>
   <div class="card row" style="margin-bottom:16px;padding:14px 18px">
-    <span>${S.focus === VT ? `⭐ ${What} ini <b>diprioritaskan</b> untuk kartu baru di Review.` : `Ingin fokus ke ${what} ini? Kartu barunya akan muncul duluan di Review.`}</span><span class="sp"></span>
+    <span>${S.focus === VT ? `⭐ ${What} ini <b>diprioritaskan</b> untuk kartu baru di Review.` : `Ingin fokus ke ${what} ini? Kartu barunya akan muncul duluan di Review.`}${helpBtn('metode')}</span><span class="sp"></span>
     <button class="btn ${S.focus === VT ? 'ghost' : 'alt'}" onclick="S.focus=S.focus===VT?null:VT;save();R=null;render()">${S.focus === VT ? 'Batalkan' : '⭐ Prioritaskan'}</button>
   </div>
   <div class="fcg">${items.map((v, i) => { const st = status(v.id);
@@ -2264,7 +2273,7 @@ function vVocab() {
 /* ---------- kanji ---------- */
 function vKanji() {
   return `<div class="row"><h1>漢 Kanji N5</h1><span class="sp"></span>
-    <span class="chip">⬜ baru</span><span class="chip" style="border-color:var(--warn)">🟧 dipelajari</span><span class="chip" style="border-color:var(--good)">🟩 hafal</span></div>
+    <span class="chip">⬜ baru</span><span class="chip" style="border-color:var(--warn)">🟧 dipelajari</span><span class="chip" style="border-color:var(--good)">🟩 hafal</span>${helpBtn('status')}</div>
   <p class="muted">Klik kanji untuk melihat arti, cara baca, dan mnemonik. Kanji masuk ke Review otomatis bersama kosakata.</p>
   <div class="card" style="margin-bottom:16px;padding:14px 18px">💡 Setiap kanji punya <b>cara baca utama</b> (saat berdiri sendiri, mis. 七 = <b>nana</b>). Saat bergabung dengan kanji lain, bacaannya bisa berubah (七月 = <b>shichi</b>gatsu, Juli) — semuanya tetap bahasa Jepang.</div>
   <div class="kg">${KANJI.map((k, i) => `<button class="kt ${status(k.id)}" onclick="openKanji(${i})" style="animation:rise .35s ${i * .012}s both"><span class="kchar">${k.c}</span><small>${esc(k.m)}</small></button>`).join('')}</div>`;
@@ -2279,7 +2288,95 @@ function openKanji(i) {
     <div class="row" style="margin-top:14px"><button class="btn ghost" ${i ? '' : 'disabled'} onclick="openKanji(${i - 1})">← Sebelumnya</button><span class="sp"></span>
     <button class="btn" ${i < KANJI.length - 1 ? '' : 'disabled'} onclick="openKanji(${i + 1})">Berikutnya →</button></div></div></div>`;
 }
-const closeModal = () => $('#modal').innerHTML = '';
+let helpT = 0; // saat keterangan dibuka di tengah soal Review, waktunya tidak dihitung ke kecepatan menjawab
+const closeModal = () => { if (helpT && R && !R.shown) R.t0 += Date.now() - helpT; helpT = 0; $('#modal').innerHTML = ''; };
+
+/* ---------- keterangan: arti setiap kriteria & istilah di aplikasi ---------- */
+const helpBtn = id => `<button class="ib" title="Apa artinya?" aria-label="Keterangan" onclick="event.stopPropagation();openHelp('${id}')">?</button>`;
+const HELP = [
+  ['nilai', '🎯 Penilaian jawaban: Lupa · Sulit · Bagus · Mudah', `
+    <p>Setiap jawaban di Review dinilai otomatis dari <b>ketepatan</b> dan <b>kecepatan</b>. Nilainya menentukan kapan kartu itu muncul lagi.</p>
+    <table><tr><th>Nilai</th><th>Kriteria</th><th>Muncul lagi</th></tr>
+      <tr><td>✗ Lupa</td><td>Jawaban salah, kosong, atau menekan "Tidak tahu".</td><td>10 menit lagi, dan diulang 3 kartu kemudian di sesi yang sama. Jaraknya dihitung dari awal lagi.</td></tr>
+      <tr><td>😅 Sulit</td><td>Benar, tapi ada salah ketik kecil atau butuh lebih dari 20 detik.</td><td>Jaraknya hanya bertambah sedikit (minimal 1 hari).</td></tr>
+      <tr><td>✓ Bagus</td><td>Benar dengan waktu biasa.</td><td>Besok, lalu 3 hari lagi, lalu sekitar 2,5× jarak sebelumnya.</td></tr>
+      <tr><td>⚡ Mudah</td><td>Benar dan cepat: kira-kira 4 detik ditambah 0,2 detik per huruf yang diketik.</td><td>3 hari lagi, lalu jaraknya melebar lebih cepat daripada Bagus.</td></tr></table>
+    <ul><li>Kartu yang baru dikenalkan di sesi itu paling tinggi mendapat <b>Bagus</b>.</li>
+      <li>Kalau jawabanmu sebenarnya benar tapi dinilai Lupa (misalnya sinonim yang belum dikenali), tekan <b>"Jawabanku sebenarnya benar"</b>. Kartu itu dihitung Bagus.</li>
+      <li>Setiap kartu punya tingkat kemudahan sendiri. Sering Lupa atau Sulit membuat jaraknya tumbuh lebih lambat, sering Mudah membuatnya tumbuh lebih cepat.</li></ul>`],
+  ['status', '🟢 Status kartu: baru · sedang dipelajari · hafal', `
+    <ul><li><b>Baru</b> (⬜, titik abu-abu): belum pernah kamu jawab di Review.</li>
+      <li><b>Sedang dipelajari</b> (🟧, titik oranye): sudah pernah dijawab, tapi jarak ulangnya masih kurang dari 21 hari.</li>
+      <li><b>Hafal</b> (🟩, titik hijau): jarak ulangnya sudah 21 hari atau lebih. Artinya kamu sudah berkali-kali menjawabnya dengan benar.</li></ul>
+    <p>Kartu yang sudah hafal lalu dijawab Lupa akan turun lagi menjadi "sedang dipelajari". Di Beranda, angka "dipelajari" menghitung kartu oranye dan hijau, sedangkan angka "hafal" hanya kartu hijau.</p>`],
+  ['soal', '✍️ Jenis soal & jawaban yang diterima', `
+    <p>Supaya kamu hafal dari dua arah, jenis soal untuk tiap kartu bergantian:</p>
+    <ul><li><b>ID</b>: lihat kata Jepang, ketik artinya dalam bahasa Indonesia.</li>
+      <li><b>あ</b>: lihat artinya, ketik kata Jepangnya dengan keyboard kana di layar.</li>
+      <li><b>Aa</b>: lihat tulisan Jepangnya, ketik cara bacanya dengan huruf latin (romaji), misalnya <i>gakkou</i>.</li></ul>
+    <p>Kosakata bergiliran ID → あ → Aa. Kanji bergiliran ID ↔ Aa.</p>
+    <p>Yang tetap dihitung benar:</p>
+    <ul><li>sinonim umum dan bentuk kata dasar (makan = memakan, susah = sulit);</li>
+      <li>bagian arti yang ada di dalam kurung boleh tidak diketik;</li>
+      <li>ejaan romaji Hepburn maupun Kunrei (shi/si, tsu/tu), dan vokal panjang boleh tidak ditulis (gakko);</li>
+      <li>kata katakana boleh diketik dengan hiragana; tanda ～, spasi, dan tanda baca tidak perlu diketik.</li></ul>
+    <p>Salah ketik kecil (biasanya satu huruf) pada kata yang agak panjang tetap dianggap benar, tapi nilainya menjadi Sulit. Kata yang pendek harus diketik tepat.</p>`],
+  ['baru', '✨ Kartu baru & kartu jatuh tempo', `
+    <ul><li><b>Kartu baru</b>: kata atau kanji yang belum pernah kamu pelajari. Jumlahnya per hari diatur di Pengaturan ("Kartu baru/hari", bawaannya 10). Kartu baru muncul dulu sebagai perkenalan, lalu diuji 2 kartu kemudian.</li>
+      <li><b>Jatuh tempo</b>: kartu lama yang jadwal ulangnya sudah tiba. Kartu ini didahulukan di Review, mulai dari yang paling lama menunggu.</li>
+      <li>Kartu baru diambil dengan pola 2 kosakata lalu 1 kanji.</li>
+      <li>Angka di samping menu Review adalah jumlah kartu jatuh tempo ditambah sisa kartu baru hari ini.</li></ul>`],
+  ['progres', '📈 Angka-angka di Beranda', `
+    <ul><li>🔥 <b>Hari beruntun</b>: berapa hari berturut-turut kamu belajar, yaitu menjawab kartu Review, menuntaskan satu pola grammar, atau bermain Kuis Kilat. Kalau ada hari yang terlewat, hitungannya mulai lagi dari 1.</li>
+      <li>📚 <b>Jatuh tempo</b>: jumlah kartu lama yang perlu diulang sekarang.</li>
+      <li>✨ <b>Kartu baru</b>: sisa jatah kartu baru untuk hari ini.</li>
+      <li>🏆 <b>Rekor kuis</b>: skor tertinggimu di Kuis Kilat.</li>
+      <li><b>Target Hari Ini</b>: berapa kali kamu menjawab di Review hari ini dibanding target di Pengaturan. Kartu yang diulang karena Lupa ikut dihitung. Kalau target tercapai, kamu mendapat +50 XP.</li>
+      <li><b>Kosakata</b> dan <b>Kanji</b>: berapa yang sudah dipelajari dan berapa yang sudah hafal (lihat Status kartu).</li>
+      <li><b>Grammar</b>: jumlah pola yang sudah tuntas dari seluruh pola.</li></ul>`],
+  ['xp', '⭐ XP & Level', `
+    <p>XP adalah poin usaha. Cara mendapatkannya:</p>
+    <ul><li>Review: Lupa +2, Sulit +6, Bagus atau Mudah +10;</li>
+      <li>latihan grammar dijawab benar +5, pola grammar tuntas untuk pertama kalinya +30;</li>
+      <li>Kuis Kilat: +3 untuk setiap jawaban benar;</li>
+      <li>Target harian tercapai: +50.</li></ul>
+    <p>Level naik saat XP mencapai 40, 160, 360, 640, 1.000, dan seterusnya (rumusnya 40 × (level − 1)²).</p>`],
+  ['metode', '📘 Metode belajar: per tema atau per bab', `
+    <ul><li><b>🗂️ Per tema</b> (bawaan): kartu baru diambil tema demi tema (Salam, Orang, Waktu, dan seterusnya). Halaman Kosakata dikelompokkan per tema.</li>
+      <li><b>📘 Per bab Minna no Nihongo I</b>: kartu baru mengikuti urutan Bab 1 sampai 25, kanji muncul setelah kata yang memakainya, dan grammar diurutkan per bab. Rencana Hari Ini hanya menyarankan grammar sampai bab kosakata yang sedang kamu pelajari, dan contoh kalimat tambahan tidak diambil dari bab yang belum dipelajari.</li>
+      <li><b>Ekstra</b>: kata dasar yang tidak ada di daftar kosakata buku. Di metode per bab, kata-kata ini dipelajari setelah Bab 25.</li>
+      <li><b>⭐ Prioritaskan</b> (di halaman Kosakata): kartu baru dari tema atau bab yang dipilih didahulukan.</li>
+      <li>Mengganti metode tidak menghapus progres. Yang berubah hanya urutan kartu yang belum dipelajari.</li></ul>`],
+  ['grammar', '🧩 Grammar & latihannya', `
+    <ul><li>Setiap pola berisi penjelasan dan contoh kalimat (tekan 🔊 untuk mendengar), lalu latihan.</li>
+      <li><b>Susun kalimat</b>: ketuk kepingan sesuai urutan yang benar, lalu tekan Periksa. Ketuk kepingan yang sudah dipilih untuk mengembalikannya. Tombol "Lihat jawaban" muncul setelah sekali salah.</li>
+      <li><b>Pilih yang tepat</b>: pilih isian untuk bagian ？ di kalimat.</li>
+      <li>Sebuah pola dihitung <b>tuntas</b> (✓) setelah semua latihannya selesai.</li>
+      <li>Label <b>📘 Bab</b> menunjukkan di bab Minna no Nihongo I mana pola itu diajarkan.</li></ul>`],
+  ['kuis', '⚡ Kuis Kilat', `
+    <ul><li>Waktunya 60 detik dengan soal campuran: pilih arti, pilih kata Jepang, dengarkan lalu pilih, arti kanji, ketik romaji, dan ketik dengan kana. Soal dengarkan tidak muncul kalau suara otomatis dimatikan.</li>
+      <li><b>Combo</b>: jawaban benar berturut-turut. Skor tiap soal = 10 × combo, paling tinggi ×5. Sekali salah, combo kembali ke 0.</li>
+      <li>Soal diambil dari kata yang sudah kamu pelajari, asalkan sudah ada minimal 12 kata.</li>
+      <li>Setelah kuis selesai kamu mendapat +3 XP per jawaban benar, dan skor tertinggi menjadi rekor.</li></ul>`],
+  ['tombol', '🔘 Tombol & pengaturan', `
+    <ul><li><b>ふ</b>: menampilkan atau menyembunyikan furigana (cara baca kecil di atas kanji).</li>
+      <li><b>🔊 / 🔇</b>: suara pengucapan otomatis. Saat dimatikan, tombol 🔊 kecil di samping kata tetap bisa ditekan.</li>
+      <li><b>🎵</b>: musik belajar (lagu lofi, bisa diulang 1 lagu, diputar berurutan, atau diacak).</li>
+      <li><b>◐</b>: tema terang atau gelap.</li>
+      <li><b>Kartu baru/hari</b> dan <b>Target review/hari</b>: sesuaikan dengan waktu belajarmu.</li>
+      <li><b>Reset progres</b>: menghapus semua progres dan tidak bisa dibatalkan.</li>
+      <li><b>Sinkron</b>: setelah link sinkron dibuka di sebuah perangkat, progresnya otomatis sama di PC dan HP.</li>
+      <li>Pintasan keyboard: Enter untuk memeriksa atau lanjut, Spasi untuk lanjut, dan angka 1–4 untuk pilihan ganda di Kuis.</li></ul>`],
+];
+function openHelp(id) {
+  if (!helpT) helpT = Date.now();
+  $('#modal').innerHTML = `<div class="modal" onclick="if(event.target===this)closeModal()"><div class="card help">
+    <div class="row"><h2 style="margin:0">📖 Keterangan</h2><span class="sp"></span><button class="tbtn" onclick="closeModal()">✕</button></div>
+    <p class="muted" style="margin:4px 0 6px;font-size:14px">Ketuk judul untuk membuka penjelasannya. Tombol <b>?</b> di aplikasi langsung membuka bagian yang sesuai.</p>
+    ${HELP.map(([k, t, body]) => `<details class="info" id="h-${k}" ${k === id ? 'open' : ''}><summary>${t}</summary>${body}</details>`).join('')}
+  </div></div>`;
+  if (id) $('#h-' + id)?.scrollIntoView({ block: 'nearest' });
+}
 
 /* ---------- grammar ---------- */
 let GS = null;
@@ -2296,7 +2393,7 @@ function initEx(i, e) {
 // urutan tampil pola: per bab di metode Bab, urutan asli di metode Tema (indeks tetap dipakai untuk progres)
 const gOrder = () => { const ix = GRAMMAR.map((_, i) => i); return babMode() ? ix.sort((a, b) => GRAMMAR[a].b - GRAMMAR[b].b || a - b) : ix; };
 function vGrammarList() {
-  return `<div class="row"><h1>🧩 Grammar N5</h1><span class="sp"></span><span class="muted">${Object.keys(S.grammar).length}/${GRAMMAR.length} tuntas</span></div>
+  return `<div class="row"><h1>🧩 Grammar N5${helpBtn('grammar')}</h1><span class="sp"></span><span class="muted">${Object.keys(S.grammar).length}/${GRAMMAR.length} tuntas</span></div>
   <p class="muted">Satu pola per hari sudah cukup. Baca → dengarkan contoh → susun kalimat sendiri.${babMode() ? ' Urut sesuai bab Minna no Nihongo I.' : ''}</p>
   <div class="gl">${gOrder().map((i, n) => { const g = GRAMMAR[i]; return `<a class="gi ${S.grammar[i] ? 'done' : ''}" href="#grammar/${i}" style="animation:rise .35s ${n * .02}s both">
     <span class="n">${S.grammar[i] ? '✓' : n + 1}</span><div><div class="p">${g.t}</div><div class="muted" style="font-size:13px">📘 Bab ${g.b} · ${g.q.length} latihan</div></div></a>`; }).join('')}</div>`;
@@ -2337,7 +2434,7 @@ function vGrammar(arg) {
       <p>${g.d}</p>
       ${g.ex.map(([jp, id]) => `<div class="ex"><div class="row"><span class="jp">${furi(jp)}</span><span class="sp"></span>${spk(kana(jp))}</div><div class="muted">${esc(id)}</div></div>`).join('')}
     </div>
-    <div class="card" id="exc"><div class="row"><h2>✍️ Latihan</h2><span class="sp"></span><span class="muted">${Math.min(GS.e + 1, g.q.length)} / ${g.q.length}</span></div>
+    <div class="card" id="exc"><div class="row"><h2>✍️ Latihan${helpBtn('grammar')}</h2><span class="sp"></span><span class="muted">${Math.min(GS.e + 1, g.q.length)} / ${g.q.length}</span></div>
       <div class="prog"><i style="width:${GS.e / g.q.length * 100}%"></i></div>${exHTML}</div>
   </div>`;
 }
@@ -2371,7 +2468,7 @@ let Q = null, qTimer = null;
 const QTIME = 60;
 function vQuiz() {
   if (!Q || Q.state === 'idle') return `<div class="rv"><div class="card qcard">
-    <div style="font-size:64px">⚡</div><h1>Kuis Kilat</h1>
+    <div style="font-size:64px">⚡</div><h1>Kuis Kilat${helpBtn('kuis')}</h1>
     <p class="muted">60 detik, soal campuran: pilih arti, pilih kata Jepang, dengar audio, kanji, <b>jawab romaji</b>, dan <b>jawab dengan huruf Jepang</b> (keyboard kana di layar). Jawaban benar beruntun = <b>combo</b> pengali skor!</p>
     <p>Rekor kamu: <b class="gt" style="font-size:22px">${S.best}</b></p>
     <button class="btn big" onclick="startQuiz()">Mulai!</button><p class="hint">Pintasan: tombol 1–4 untuk pilihan ganda · Enter untuk soal ketik</p></div></div>`;
@@ -2385,7 +2482,7 @@ function vQuiz() {
     <div class="row" style="margin-bottom:8px"><b>⏱️ <span id="qtime">${Math.ceil(left)}</span>s</b><span class="sp"></span>${Q.combo > 1 ? `<span class="combo">COMBO ×${Math.min(5, Q.combo)}</span>` : ''}<span class="sp"></span><b>${Q.score} pts</b></div>
     <div class="timer"><i id="qbar" style="width:${left / QTIME * 100}%"></i></div>
     <div class="card qcard" id="qc" style="margin-top:16px">
-      ${c.typed ? modeBadge(c.typed) : `<div class="muted">${c.label}</div>`}
+      ${c.typed ? modeBadge(c.typed, false) : `<div class="muted">${c.label}</div>`}
       <div class="big ${c.cls}">${c.prompt}</div>
       ${c.typed ? `<div class="ans"><input id="ansIn" ${inputAttrs(c.typed)} autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn" onclick="quizTyped()">Periksa</button></div>
         <div id="qfb" class="verdict"></div>${c.typed === 'jp' ? kbHTML() : ''}<button class="linkbtn" onclick="quizTyped(true)">Lewati</button>`
@@ -2557,6 +2654,8 @@ function runTests() {
   babWords.forEach(w => { if (!BYW[w]) throw new Error('kata di BABRAW tidak ada di kosakata: ' + w); });
   eq(new Set(babWords).size, babWords.length, 'kata di BABRAW tidak dobel');
   for (let b = 1; b <= 25; b++) if (!BABORDER.some(v => v.bab === b)) throw new Error('Bab ' + b + ' belum punya kata');
+  ['nilai', 'status', 'soal', 'baru', 'progres', 'xp', 'metode', 'grammar', 'kuis', 'tombol'].forEach(id => { if (!HELP.some(h => h[0] === id)) throw new Error('keterangan belum ada: ' + id); });
+  eq(new Set(HELP.map(h => h[0])).size, HELP.length, 'id keterangan unik');
   eq(GRAMMAR.every(g => g.b >= 1 && g.b <= 25), true, 'grammar punya bab'); eq(new Set(GRAMMAR.map(g => g.t)).size, GRAMMAR.length, 'judul grammar unik');
   const keep = S; // progres asli harus kembali walau tes gagal, supaya tidak tersimpan kosong
   try {
