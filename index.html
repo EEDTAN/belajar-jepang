@@ -2179,11 +2179,16 @@ function inputAttrs(m, kanji) {
   if (m === 'jp') return 'placeholder="Ketuk huruf di keyboard Jepang ↓" readonly inputmode="none" lang="ja"';
   return `placeholder="${m === 'romaji' ? 'Ketik romaji, mis. gakkou' : kanji ? 'Ketik arti, mis. tujuh' : 'Ketik arti (bahasa Indonesia)…'}"`;
 }
-// null = huruf salah jenis (tidak dinilai, hanya diingatkan)
-function validAnswer(m, raw) {
+// null = jawaban salah jenis (tidak dinilai, hanya diingatkan): huruf salah, atau cara baca di soal arti dan sebaliknya
+function validAnswer(m, raw, it) {
   let t = raw.trim(); if (!t) return '';
   if (m === 'jp' && /[a-z]/i.test(t)) { toast('Soal ini dijawab dengan keyboard Jepang di layar.'); return null; }
   if (m === 'romaji' && hasJP(t)) { toast('Soal ini dijawab dengan romaji (huruf latin), mis. gakkou'); return null; }
+  if (it && (m === 'mean' || m === 'romaji')) {
+    const read = it.type === 'k' ? kanjiReadAnswer(it, t) : matchReading(t, it.r), mean = matchMeaning(t, it.m);
+    if (m === 'mean' && read === 2 && !mean) { toast('Soal ini meminta ARTI (bahasa Indonesia), bukan cara bacanya. Coba ketik artinya.'); return null; }
+    if (m === 'romaji' && mean === 2 && !read) { toast('Soal ini meminta CARA BACA (romaji), bukan artinya. Coba ketik cara bacanya.'); return null; }
+  }
   return t;
 }
 
@@ -2301,7 +2306,7 @@ function learned() {
 function check(skip) {
   if (!R || R.shown) return;
   const it = R.q[R.i], isV = it.type === 'v', secs = (Date.now() - R.t0) / 1000;
-  const typed = skip ? '' : validAnswer(R.mode, $('#ansIn')?.value || '');
+  const typed = skip ? '' : validAnswer(R.mode, $('#ansIn')?.value || '', it);
   if (typed === null) return; // huruf yang dipakai tidak sesuai tipe soal
   R.typed = typed;
   const score = !typed ? 0 : !isV ? (R.mode === 'romaji' ? kanjiReadAnswer(it, typed) : matchMeaning(typed, it.m))
@@ -2396,7 +2401,9 @@ const HELP = [
       <li>bagian arti yang ada di dalam kurung boleh tidak diketik;</li>
       <li>ejaan romaji Hepburn maupun Kunrei (shi/si, tsu/tu), dan vokal panjang boleh tidak ditulis (gakko);</li>
       <li>kata katakana boleh diketik dengan hiragana, atau tekan tombol <b>カナ</b> di keyboard untuk mengetik katakana; tanda ～, spasi, dan tanda baca tidak perlu diketik.</li></ul>
-    <p>Salah ketik kecil (biasanya satu huruf) pada kata yang agak panjang tetap dianggap benar, tapi nilainya menjadi Sulit. Kata yang pendek harus diketik tepat.</p>`],
+    <p>Salah ketik kecil (biasanya satu huruf) pada kata yang agak panjang tetap dianggap benar, tapi nilainya menjadi Sulit. Kata yang pendek harus diketik tepat.</p>
+    <p>Kalau kamu mengetik cara baca di soal <b>ID</b> (misalnya "yon" untuk 四), atau arti di soal <b>Aa</b>, jawabannya tidak dinilai. Kamu diingatkan dulu lalu bisa mengetik ulang.</p>
+    <p>Ingat juga: angka di dalam kata sering berubah bunyi. 四 sendiri dibaca よん (yon), tapi 四つ dibaca よっつ (yottsu) dan 四日 dibaca よっか (yokka).</p>`],
   ['baru', '✨ Kartu baru & kartu jatuh tempo', `
     <ul><li><b>Kartu baru</b>: kata atau kanji yang belum pernah kamu pelajari. Jumlahnya per hari diatur di Pengaturan ("Kartu baru/hari", bawaannya 10). Kartu baru muncul dulu sebagai perkenalan, lalu diuji 2 kartu kemudian.</li>
       <li><b>Jatuh tempo</b>: kartu lama yang jadwal ulangnya sudah tiba.</li>
@@ -2611,7 +2618,7 @@ function answerQuiz(k) {
 }
 function quizTyped(skip) {
   if (!Q || Q.state !== 'run' || Q.lock || !Q.cur.typed) return;
-  const it = Q.cur.item, val = skip ? '' : validAnswer(Q.cur.typed, kbIn()?.value || '');
+  const it = Q.cur.item, val = skip ? '' : validAnswer(Q.cur.typed, kbIn()?.value || '', it);
   if (val === null || (!val && !skip)) return;
   Q.lock = true; const ok = !!val && (Q.cur.typed === 'jp' ? jpByMeaning : jpAnswer)(it, val) > 0, fb = $('#qfb');
   if (fb) { fb.style.color = ok ? 'var(--good)' : 'var(--bad)'; fb.innerHTML = `${ok ? '✓ Benar!' : '✗ Jawaban:'} <span class="jp"><ruby>${it.w}<rt>${it.w === it.r ? '' : it.r}</rt></ruby></span> (${toRomaji(it.r)})`; }
@@ -2724,6 +2731,9 @@ function runTests() {
   const kGak = kanjiReadIn('学校', 'がっこう', '学'); eq(kGak.rd + kGak.surf + kGak.changed, 'がくがっtrue', 'perubahan bunyi がく→がっ');
   eq(kanjiReadIn('お名前は？', 'おなまえ は', '名').rd, 'な', 'tanda baca diabaikan');
   eq(validAnswer('romaji', 'がっこう'), null, 'romaji menolak kana'); eq(validAnswer('jp', 'gakkou'), null, 'jp menolak romaji'); eq(validAnswer('jp', 'がっこう'), 'がっこう', 'jp kana'); eq(validAnswer('mean', ' rumah '), 'rumah', 'arti');
+  const k4 = KBYC['四']; eq(validAnswer('mean', 'yon', k4), null, 'cara baca di soal arti tidak dinilai'); eq(validAnswer('romaji', 'empat', k4), null, 'arti di soal cara baca tidak dinilai');
+  eq(validAnswer('mean', 'empat', k4), 'empat', 'arti di soal arti'); eq(validAnswer('romaji', 'yon', k4), 'yon', 'cara baca di soal cara baca'); eq(kanjiReadAnswer(k4, 'yon'), 2, '四 = yon');
+  const vKam = VOCAB.find(v => v.w === 'カメラ'); if (vKam) eq(validAnswer('romaji', 'kamera', vKam), 'kamera', 'arti = bacaan tetap dinilai');
   const vTaberu = VOCAB.find(v => v.w === '食べる'), vGakusei = VOCAB.find(v => v.w === '学生');
   eq(sentencesFor(vTaberu, vTaberu.ex).length, 3, 'contoh 食べる'); eq(sentencesFor(vGakusei, vGakusei.ex)[0][0], vGakusei.ex, 'contoh sendiri duluan');
   eq(sentencesFor(KANJI.find(k => k.c === '学'), null, 2).every(x => plainJP(x[0]).includes('学')), true, 'contoh kanji');
