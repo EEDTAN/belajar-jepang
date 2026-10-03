@@ -1948,7 +1948,11 @@ function freshItems() {
   return out;
 }
 const newLeft = () => Math.max(0, Math.min(S.newPerDay - S.newToday, freshItems().length));
-function buildQueue() { rollDay(); return [...dueItems(), ...freshItems().slice(0, newLeft())]; }
+// urutan sesi: kartu baru dulu, lalu kartu jatuh tempo; kartu yang dijawab salah dipindah ke akhir sesi (lihat check)
+const queueOrder = () => [...freshItems().slice(0, newLeft()), ...dueItems()];
+function buildQueue() { rollDay(); return queueOrder(); }
+// salah: pindah ke akhir sesi, setelah semua kartu lain. Kalau ini kartu terakhir, tidak diulang langsung (jadwalnya tetap 10 menit lagi)
+const requeueWrong = (s, it) => { if (s.i < s.q.length - 1) s.q.push(it); };
 
 /* ================= VIEWS ================= */
 const NAV = [['home', '🏠', 'Beranda'], ['review', '🔁', 'Review'], ['vocab', '📖', 'Kosakata'], ['kanji', '漢', 'Kanji'], ['grammar', '🧩', 'Grammar'], ['quiz', '⚡', 'Kuis']];
@@ -2013,7 +2017,7 @@ function vHome() {
       <div class="card">
         <h2>🗓️ Rencana Hari Ini${helpBtn('metode')}</h2>
         <div class="grid" style="gap:10px;margin-top:8px">
-          <a class="gi ${due + nl ? '' : 'done'}" href="#review" onclick="R=null"><span class="n">1</span><div><b>Review SRS</b><div class="muted">${due + nl ? `${due} ulangan + ${nl} kartu baru` : 'Selesai ✓'}${cb ? ` · 📘 Bab ${cb}: ${VOCAB_BAB.filter(v => v.bab === cb && S.cards[v.id]).length}/${VOCAB_BAB.filter(v => v.bab === cb).length} kata` : ''}</div></div></a>
+          <a class="gi ${due + nl ? '' : 'done'}" href="#review" onclick="R=null"><span class="n">1</span><div><b>Review SRS</b><div class="muted">${due + nl ? `${nl} kartu baru + ${due} ulangan` : 'Selesai ✓'}${cb ? ` · 📘 Bab ${cb}: ${VOCAB_BAB.filter(v => v.bab === cb && S.cards[v.id]).length}/${VOCAB_BAB.filter(v => v.bab === cb).length} kata` : ''}</div></div></a>
           ${nextG >= 0 ? `<a class="gi" href="#grammar/${nextG}"><span class="n">2</span><div><b>Grammar: <span class="jp">${GRAMMAR[nextG].t}</span></b><div class="muted">${babMode() ? `Bab ${GRAMMAR[nextG].b} · ` : ''}Pola ${gOrder().indexOf(nextG) + 1} dari ${GRAMMAR.length}</div></div></a>` : gWait ? `<a class="gi done" href="#grammar"><span class="n">2</span><div><b>Grammar sampai Bab ${cb} tuntas ✓</b><div class="muted">Pola Bab ${cb + 1} disarankan setelah kosakata Bab ${cb} selesai</div></div></a>` : `<div class="gi done"><span class="n">2</span><b>Semua grammar tuntas 🎉</b></div>`}
           <a class="gi" href="#quiz"><span class="n">3</span><div><b>Kuis Kilat 60 detik</b><div class="muted">Latih kecepatan mengenali kata</div></div></a>
         </div>
@@ -2237,7 +2241,7 @@ function check(skip) {
   if (!R.prev) S.newToday++;
   S.doneToday++; R.n++; if (g > 1) R.good++;
   touchStreak(); addXP(g === 1 ? 2 : g === 2 ? 6 : 10);
-  if (g === 1) R.q.splice(Math.min(R.i + 4, R.q.length), 0, it); // ulangi di sesi yang sama
+  if (g === 1) requeueWrong(R, it);
   R.res = { g, score, secs }; R.shown = true;
   save(); checkGoal(); render();
   animate('#qc', g === 1 ? 'shake' : 'pop');
@@ -2297,7 +2301,7 @@ const HELP = [
   ['nilai', '🎯 Penilaian jawaban: Lupa · Sulit · Bagus · Mudah', `
     <p>Setiap jawaban di Review dinilai otomatis dari <b>ketepatan</b> dan <b>kecepatan</b>. Nilainya menentukan kapan kartu itu muncul lagi.</p>
     <table><tr><th>Nilai</th><th>Kriteria</th><th>Muncul lagi</th></tr>
-      <tr><td>✗ Lupa</td><td>Jawaban salah, kosong, atau menekan "Tidak tahu".</td><td>10 menit lagi, dan diulang 3 kartu kemudian di sesi yang sama. Jaraknya dihitung dari awal lagi.</td></tr>
+      <tr><td>✗ Lupa</td><td>Jawaban salah, kosong, atau menekan "Tidak tahu".</td><td>10 menit lagi. Di sesi yang sama, kartu ini dipindah ke paling belakang dan ditanyakan lagi setelah semua kartu lain. Jaraknya dihitung dari awal lagi.</td></tr>
       <tr><td>😅 Sulit</td><td>Benar, tapi ada salah ketik kecil atau butuh lebih dari 20 detik.</td><td>Jaraknya hanya bertambah sedikit (minimal 1 hari).</td></tr>
       <tr><td>✓ Bagus</td><td>Benar dengan waktu biasa.</td><td>Besok, lalu 3 hari lagi, lalu sekitar 2,5× jarak sebelumnya.</td></tr>
       <tr><td>⚡ Mudah</td><td>Benar dan cepat: kira-kira 4 detik ditambah 0,2 detik per huruf yang diketik.</td><td>3 hari lagi, lalu jaraknya melebar lebih cepat daripada Bagus.</td></tr></table>
@@ -2323,7 +2327,8 @@ const HELP = [
     <p>Salah ketik kecil (biasanya satu huruf) pada kata yang agak panjang tetap dianggap benar, tapi nilainya menjadi Sulit. Kata yang pendek harus diketik tepat.</p>`],
   ['baru', '✨ Kartu baru & kartu jatuh tempo', `
     <ul><li><b>Kartu baru</b>: kata atau kanji yang belum pernah kamu pelajari. Jumlahnya per hari diatur di Pengaturan ("Kartu baru/hari", bawaannya 10). Kartu baru muncul dulu sebagai perkenalan, lalu diuji 2 kartu kemudian.</li>
-      <li><b>Jatuh tempo</b>: kartu lama yang jadwal ulangnya sudah tiba. Kartu ini didahulukan di Review, mulai dari yang paling lama menunggu.</li>
+      <li><b>Jatuh tempo</b>: kartu lama yang jadwal ulangnya sudah tiba, diurutkan dari yang paling lama menunggu.</li>
+      <li>Urutan satu sesi Review: <b>kartu baru dulu</b>, lalu kartu jatuh tempo, lalu kartu yang tadi dijawab salah di paling belakang.</li>
       <li>Kartu baru diambil dengan pola 2 kosakata lalu 1 kanji.</li>
       <li>Angka di samping menu Review adalah jumlah kartu jatuh tempo ditambah sisa kartu baru hari ini.</li></ul>`],
   ['progres', '📈 Angka-angka di Beranda', `
@@ -2662,8 +2667,12 @@ function runTests() {
     S = { ...defaults(), method: 'bab' }; eq(freshItems()[0].bab, 1, 'metode bab mulai dari Bab 1');
     const vIku = BYW['行く']; eq(sentencesFor(vIku, vIku.ex, 99).slice(2).every(x => x[2] <= 5), true, 'contoh tambahan tidak melompati bab');
     S = defaults(); eq(freshItems()[0], VOCAB[0], 'metode tema mulai dari tema pertama');
+    S.cards[VOCAB[5].id] = { due: 0, ivl: 1, reps: 1, ease: 2.5, lapses: 0 }; // satu kartu lama jatuh tempo
+    const qo = queueOrder(); eq(!S.cards[qo[0].id], true, 'kartu baru didahulukan'); eq(qo[qo.length - 1], VOCAB[5], 'kartu jatuh tempo setelah kartu baru');
   } finally { S = keep; }
   const sv = S.voice; S.voice = false; for (let i = 0; i < 60; i++) if (genQ().audio) { S.voice = sv; throw new Error('soal dengar muncul saat suara mati'); } S.voice = sv;
+  const rq1 = { q: ['a', 'b', 'c'], i: 0 }; requeueWrong(rq1, 'a'); eq(rq1.q.join(''), 'abca', 'kartu salah pindah ke akhir sesi');
+  const rq2 = { q: ['a', 'b'], i: 1 }; requeueWrong(rq2, 'b'); eq(rq2.q.join(''), 'ab', 'kartu terakhir tidak langsung diulang');
   const T0 = TRACKS[0].id, TL = TRACKS[TRACKS.length - 1].id;
   eq(nextId(T0, 'all'), TRACKS[1].id, 'musik berurutan'); eq(nextId(TL, 'all'), T0, 'musik kembali ke awal');
   for (let i = 0; i < 30; i++) if (nextId(T0, 'shuffle') === T0) throw new Error('acak memutar lagu yang sama');
