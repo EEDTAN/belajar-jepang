@@ -1708,9 +1708,7 @@ const BYW = Object.fromEntries(VOCAB.map(v => [v.w, v]));
 const BABORDER = [];
 BABRAW.trim().split('\n').forEach(l => { const [b, ...ws] = l.split('|'); ws.forEach(w => { const v = BYW[w.trim()]; if (v && !v.bab) { v.bab = +b; BABORDER.push(v); } }); });
 const EXTRA = VOCAB.filter(v => !v.bab);
-const VOCAB_BAB = [...BABORDER, ...EXTRA];
-const KBAB = Object.fromEntries(KANJI.map(k => [k.c, Math.min(99, ...BABORDER.filter(v => v.w.includes(k.c)).map(v => v.bab))]));
-const KANJI_BAB = [...KANJI].sort((a, b) => KBAB[a.c] - KBAB[b.c]); // kanji muncul setelah bab yang memakainya
+const VOCAB_BAB = [...BABORDER, ...EXTRA]; // urutan kanji per metode: lihat kx() di bagian "kanji info"
 
 /* ================= HELPERS ================= */
 const DAY = 864e5, MIN = 6e4, KEY = 'nihongo-dojo-v1';
@@ -1941,7 +1939,7 @@ const groupOf = v => babMode() ? (v.bab ? 'Bab ' + v.bab : 'Ekstra') : v.theme;
 const groups = () => babMode() ? [...Array(25)].map((_, i) => 'Bab ' + (i + 1)).concat(EXTRA.length ? ['Ekstra'] : []) : Object.keys(VRAW);
 const curBab = () => VOCAB_BAB.find(v => v.bab && !S.cards[v.id])?.bab; // bab yang sedang dipelajari
 function freshItems() {
-  let v = (babMode() ? VOCAB_BAB : VOCAB).filter(x => !S.cards[x.id]); const k = (babMode() ? KANJI_BAB : KANJI).filter(x => !S.cards[x.id]);
+  let v = (babMode() ? VOCAB_BAB : VOCAB).filter(x => !S.cards[x.id]); const k = kx().kanji.filter(x => !S.cards[x.id]);
   if (S.focus) v = [...v.filter(x => groupOf(x) === S.focus), ...v.filter(x => groupOf(x) !== S.focus)];
   const out = []; // 2 kosakata : 1 kanji
   while (v.length || k.length) { if (v.length) out.push(v.shift()); if (v.length) out.push(v.shift()); if (k.length) out.push(k.shift()); }
@@ -2056,15 +2054,75 @@ const relParts = k => { const m = k.rel.match(/^(.+?)\((.+?)\)\s*(.*)$/); return
 const MAIN_READ = { 一: 'いち', 二: 'に', 三: 'さん', 四: 'よん', 五: 'ご', 六: 'ろく', 七: 'なな', 八: 'はち', 九: 'きゅう', 十: 'じゅう', 百: 'ひゃく', 千: 'せん', 万: 'まん', 円: 'えん',
   分: 'ふん', 半: 'はん', 本: 'ほん', 語: 'ご', 天: 'てん', 下: 'した', 午: 'ご', 毎: 'まい', 年: 'ねん', 時: 'じ', 金: 'かね', 土: 'つち', 木: 'き', 水: 'みず', 火: 'ひ', 日: 'ひ' };
 const readList = x => x === '—' ? [] : x.split(/,\s*/).map(r => toHira(r.replace(/[()]/g, '')));
-const mainRead = k => MAIN_READ[k.c] || readList(k.kun)[0] || readList(k.on)[0];
+const baseRead = k => MAIN_READ[k.c] || readList(k.kun)[0] || readList(k.on)[0];
+
+// Kanji dalam konteks: cara baca yang ditanyakan & urutan munculnya mengikuti kata PERTAMA yang memakai kanji itu
+// di urutan metode belajar (tema/bab). Contoh metode bab: 行 pertama muncul di 銀行員 (Bab 1), jadi dibaca こう.
+const KBYC = Object.fromEntries(KANJI.map(k => [k.c, k]));
+const DAKU = { か: 'が', き: 'ぎ', く: 'ぐ', け: 'げ', こ: 'ご', さ: 'ざ', し: 'じ', す: 'ず', せ: 'ぜ', そ: 'ぞ', た: 'だ', ち: 'ぢ', つ: 'づ', て: 'で', と: 'ど', は: 'ば', ひ: 'び', ふ: 'ぶ', へ: 'べ', ほ: 'ぼ' };
+const HANDA = { は: 'ぱ', ひ: 'ぴ', ふ: 'ぷ', へ: 'ぺ', ほ: 'ぽ' };
+function kanjiCands(k) { // [bentuk di dalam kata, bentuk yang ditampilkan, berubah bunyi?], terpanjang dulu
+  const out = [], add = (surf, disp) => {
+    out.push([surf, disp, false]);
+    if (DAKU[surf[0]]) out.push([DAKU[surf[0]] + surf.slice(1), disp, true]);      // rendaku: ひ → び
+    if (HANDA[surf[0]]) out.push([HANDA[surf[0]] + surf.slice(1), disp, true]);
+    if (surf.length > 1 && 'つちくき'.includes(surf.slice(-1))) out.push([surf.slice(0, -1) + 'っ', disp, true]); // がく → がっ
+  };
+  if (k.on !== '—') k.on.split(/,\s*/).forEach(r => add(toHira(r), toHira(r)));
+  if (k.kun !== '—') k.kun.split(/,\s*/).forEach(r => { const stem = toHira(r.replace(/\(.*$/, '')), full = toHira(r.replace(/[()]/g, '')); add(stem, full); if (full !== stem) add(full, full); });
+  return out.sort((a, b) => b[0].length - a[0].length);
+}
+// cara baca kanji c di kata w (bacaan r): cocokkan huruf demi huruf; kanji di luar daftar boleh 1–4 kana.
+// null kalau tidak bisa dipecah per kanji (今日 = きょう, 日本 = にほん)
+function kanjiReadIn(w, r, c) {
+  const W = [...w.replace(/[～\s、。？！?!]/g, '')], R = toHira(r).replace(/[～\s、。？！?!]/g, '');
+  let found = null;
+  const go = (i, j, got) => {
+    if (found) return;
+    if (i === W.length) { if (j === R.length && got) found = got; return; }
+    const ch = W[i];
+    if (!/[々一-鿿]/.test(ch)) { if (toHira(ch) === R[j]) go(i + 1, j + 1, got); return; }
+    const k = KBYC[ch === '々' ? W[i - 1] : ch];
+    const cs = k ? kanjiCands(k) : [1, 2, 3, 4].map(n => [R.substr(j, n), null, false]);
+    for (const [surf, disp, changed] of cs) if (surf && R.startsWith(surf, j)) go(i + 1, j + surf.length, got || (ch === c ? { rd: disp, surf, changed } : null));
+  };
+  go(0, 0, null);
+  return found;
+}
+let KX = null; // dihitung sekali saat pertama dipakai: { tema|bab: { ctx: kanji → {v, rd, surf, changed}, kanji: urutan kanji } }
+function kx() {
+  if (!KX) {
+    KX = {};
+    for (const [m, order] of [['tema', VOCAB], ['bab', VOCAB_BAB]]) {
+      const ctx = {}, pos = {};
+      for (const k of KANJI) {
+        let first = 1e9; // kanji tanpa kata konteks: di urutan kata pertama yang memakainya, atau paling akhir
+        for (let i = 0; i < order.length; i++) {
+          if (!order[i].w.includes(k.c)) continue;
+          first = Math.min(first, i);
+          const x = kanjiReadIn(order[i].w, order[i].r, k.c);
+          if (x) { ctx[k.c] = { v: order[i], ...x }; first = i; break; }
+        }
+        pos[k.c] = first;
+      }
+      KX[m] = { ctx, kanji: [...KANJI].sort((a, b) => pos[a.c] - pos[b.c]) };
+    }
+  }
+  return KX[babMode() ? 'bab' : 'tema'];
+}
+const kctx = k => kx().ctx[k.c];
+const NUMK = '一二三四五六七八九十百千万'; // angka tetap memakai bacaan hitungan (いち, に, さん…), bukan 三日 = みっか
+const mainRead = k => (!NUMK.includes(k.c) && kctx(k)?.rd) || baseRead(k);
 const otherReads = k => [...new Set([...readList(k.kun), ...readList(k.on)])].filter(r => r !== mainRead(k));
 const kanjiReads = k => [...new Set([mainRead(k), ...otherReads(k), ...(k.kun === '—' ? [] : k.kun.split(/,\s*/).map(r => toHira(r.replace(/\(.*$/, ''))))])];
 const kanjiReadAnswer = (k, typed) => Math.max(...kanjiReads(k).map(r => matchReading(typed, r)));
+const ctxLine = k => { const c = kctx(k); return c ? `Di kosakata: <b class="jp">${c.v.w}</b> (<span class="jp">${c.v.r}</span>) = ${esc(c.v.m)}${babMode() && c.v.bab ? ` · 📘 Bab ${c.v.bab}` : ''}${c.changed ? ` · di kata ini bunyinya berubah jadi <span class="jp">${c.surf}</span>` : ''}` : ''; };
 function kanjiInfo(k) {
-  const rp = relParts(k), mr = mainRead(k), others = otherReads(k);
+  const rp = relParts(k), mr = mainRead(k), others = otherReads(k), cl = ctxLine(k);
   return `<div class="rdg" style="grid-template-columns:1fr"><div><span class="lbl">Cara baca</span>
       <div class="row"><b class="jp" style="font-size:24px">${mr}</b><span class="muted">${toRomaji(mr)}</span>${spk(mr)}</div>
-      ${others.length ? `<small class="muted">Di kata tertentu bisa dibaca: ${others.map(r => `<span class="jp">${r}</span> (${toRomaji(r)})`).join(', ')}</small>` : ''}</div></div>
+      ${cl ? `<small class="muted" style="display:block">${cl}</small>` : ''}
+      ${others.length ? `<small class="muted">Di kata lain bisa dibaca: ${others.map(r => `<span class="jp">${r}</span> (${toRomaji(r)})`).join(', ')}</small>` : ''}</div></div>
     <div class="mn">💡 ${esc(k.mn)}</div>
     ${rp ? `<div class="ex"><span class="lbl">Contoh kata</span>
       <div class="row"><span class="jp" style="font-size:22px;font-weight:700"><ruby>${rp.w}<rt>${rp.r}</rt></ruby></span>${spk(rp.r)}<span>= ${esc(rp.m)}</span></div>
@@ -2202,6 +2260,7 @@ function vReview() {
       <div class="big ${isV ? '' : 'kchar'}">${isV ? wordHTML(it) : it.c}</div>
       <div class="mean" style="font-size:22px;font-weight:800">${esc(it.m)}</div>
       <div class="muted jp">${isV ? it.r : mainRead(it)} · ${toRomaji(isV ? it.r : mainRead(it))}</div>
+      ${!isV && ctxLine(it) ? `<div class="muted" style="font-size:14px;margin-top:6px">${ctxLine(it)}</div>` : ''}
       <button class="btn" style="margin-top:16px" onclick="learned()">Sudah kuingat, lanjut →</button>`;
     hint = 'Enter / Spasi untuk lanjut';
   } else {
@@ -2363,6 +2422,7 @@ const HELP = [
     <ul><li><b>🗂️ Per tema</b> (bawaan): kartu baru diambil tema demi tema (Salam, Orang, Waktu, dan seterusnya). Halaman Kosakata dikelompokkan per tema.</li>
       <li><b>📘 Per bab Minna no Nihongo I</b>: kartu baru mengikuti urutan Bab 1 sampai 25, kanji muncul setelah kata yang memakainya, dan grammar diurutkan per bab. Rencana Hari Ini hanya menyarankan grammar sampai bab kosakata yang sedang kamu pelajari, dan contoh kalimat tambahan tidak diambil dari bab yang belum dipelajari.</li>
       <li><b>Ekstra</b>: kata dasar yang tidak ada di daftar kosakata buku. Di metode per bab, kata-kata ini dipelajari setelah Bab 25.</li>
+      <li><b>Kanji</b> muncul dan ditanyakan sesuai kata pertama yang memakainya di urutan tema atau bab. Contoh di metode per bab: 行 pertama kali ada di 銀行員 (Bab 1), jadi cara baca yang ditanyakan こう (kou). Cara baca lain seperti いく tetap dihitung benar. Angka (一, 二, 三, …) tetap memakai bacaan hitungan: いち, に, さん.</li>
       <li><b>⭐ Prioritaskan</b> (di halaman Kosakata): kartu baru dari tema atau bab yang dipilih didahulukan.</li>
       <li>Mengganti metode tidak menghapus progres. Yang berubah hanya urutan kartu yang belum dipelajari.</li></ul>`],
   ['grammar', '🧩 Grammar & latihannya', `
@@ -2518,7 +2578,7 @@ function distract(item, list, key) {
 }
 function genQ() {
   const seenV = VOCAB.filter(v => S.cards[v.id]), seenK = KANJI.filter(k => S.cards[k.id]);
-  const vp = seenV.length >= 12 ? seenV : VOCAB, kp = seenK.length >= 8 ? seenK : KANJI.slice(0, 30);
+  const vp = seenV.length >= 12 ? seenV : VOCAB, kp = seenK.length >= 8 ? seenK : kx().kanji.slice(0, 30);
   const kind = pick(['jp', 'id', 'kanji', 'romaji', 'kana', ...(S.voice ? ['audio'] : [])]); // soal dengar hanya saat suara aktif
   if (kind === 'kanji') {
     const k = pick(kp), opts = shuffle([k, ...distract(k, KANJI, 'm')]);
@@ -2660,6 +2720,9 @@ function runTests() {
   eq(kanjiReadAnswer(k7, 'nana'), 2, 'baca nana'); eq(kanjiReadAnswer(k7, 'shichi'), 2, 'baca shichi'); eq(kanjiReadAnswer(k7, 'tujuh'), 0, 'arti bukan bacaan');
   eq(kanjiReadAnswer(k1, 'hitotsu'), 2, 'baca okurigana penuh'); eq(kanjiReadAnswer(k1, 'hito'), 2, 'baca tanpa okurigana');
   KANJI.forEach(k => { if (!mainRead(k) || /[^a-z]/.test(toRomaji(mainRead(k)))) throw new Error('baca utama rusak: ' + k.c); }); eq(relParts(KANJI[4]).m, 'lima menit', 'contoh kanji');
+  eq(kanjiReadIn('銀行員', 'ぎんこういん', '行').rd, 'こう', 'baca kanji di dalam kata'); eq(kanjiReadIn('今日', 'きょう', '今'), null, 'bacaan khusus tidak dipecah');
+  const kGak = kanjiReadIn('学校', 'がっこう', '学'); eq(kGak.rd + kGak.surf + kGak.changed, 'がくがっtrue', 'perubahan bunyi がく→がっ');
+  eq(kanjiReadIn('お名前は？', 'おなまえ は', '名').rd, 'な', 'tanda baca diabaikan');
   eq(validAnswer('romaji', 'がっこう'), null, 'romaji menolak kana'); eq(validAnswer('jp', 'gakkou'), null, 'jp menolak romaji'); eq(validAnswer('jp', 'がっこう'), 'がっこう', 'jp kana'); eq(validAnswer('mean', ' rumah '), 'rumah', 'arti');
   const vTaberu = VOCAB.find(v => v.w === '食べる'), vGakusei = VOCAB.find(v => v.w === '学生');
   eq(sentencesFor(vTaberu, vTaberu.ex).length, 3, 'contoh 食べる'); eq(sentencesFor(vGakusei, vGakusei.ex)[0][0], vGakusei.ex, 'contoh sendiri duluan');
@@ -2682,7 +2745,12 @@ function runTests() {
   try {
     S = { ...defaults(), method: 'bab' }; eq(freshItems()[0].bab, 1, 'metode bab mulai dari Bab 1');
     const vIku = BYW['行く']; eq(sentencesFor(vIku, vIku.ex, 99).slice(2).every(x => x[2] <= 5), true, 'contoh tambahan tidak melompati bab');
+    eq(mainRead(KBYC['行']), 'こう', '行 di metode bab = こう'); eq(kctx(KBYC['行']).v.w, '銀行員', 'kata konteks 行 = 銀行員 (Bab 1)');
+    eq(mainRead(KBYC['三']), 'さん', 'angka tetap bacaan hitungan');
+    eq(kx().kanji.slice(0, 5).every(k => kctx(k)?.v.bab === 1), true, 'kanji pertama di metode bab berasal dari kata Bab 1');
+    KANJI.forEach(k => { if (/[^a-z]/.test(toRomaji(mainRead(k)))) throw new Error('baca utama rusak (bab): ' + k.c); });
     S = defaults(); eq(freshItems()[0], VOCAB[0], 'metode tema mulai dari tema pertama');
+    eq(mainRead(KBYC['行']), 'いく', '行 di metode tema = いく (行ってらっしゃい)');
     S.cards[VOCAB[5].id] = { due: 0, ivl: 1, reps: 1, ease: 2.5, lapses: 0 }; // satu kartu lama jatuh tempo
     const qo = queueOrder(); eq(qo.length, 11, 'sesi = 10 kartu baru + 1 jatuh tempo'); eq(qo.includes(VOCAB[5]), true, 'kartu jatuh tempo ikut di sesi');
     eq(new Set(qo).size, qo.length, 'sesi tanpa kartu dobel');
