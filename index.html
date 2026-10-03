@@ -255,11 +255,10 @@ details.info p{margin:6px 0}
 
 /* mini player musik */
 #dock{position:fixed;left:16px;bottom:16px;z-index:40;display:flex;gap:10px;align-items:center;padding:8px;border-radius:18px;background:var(--solid);border:1px solid var(--line);box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
-#dock:not(.show){left:-9999px} /* di luar layar, bukan display:none, supaya pemutar YouTube tetap termuat */
-#dock iframe{width:200px;height:113px;border:0;border-radius:12px;display:block;flex:none}
+#dock:not(.show){display:none}
 .dk{min-width:0}.dk b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dk small{color:var(--muted);font-size:12px}
-body.music main{padding-bottom:170px}
-@media (max-width:760px){#dock{bottom:calc(76px + env(safe-area-inset-bottom))}#dock iframe{width:160px;height:90px}#dock .tbtn{width:34px;height:34px}body.music main{padding-bottom:240px!important}}
+body.music main{padding-bottom:130px}
+@media (max-width:760px){#dock{bottom:calc(76px + env(safe-area-inset-bottom))}#dock .tbtn{width:34px;height:34px}body.music main{padding-bottom:200px!important}}
 .cf{position:fixed;top:-14px;width:9px;height:14px;border-radius:2px;z-index:99;pointer-events:none;animation:cf linear forwards}
 @keyframes cf{to{transform:translate(var(--dx),105vh) rotate(var(--r))}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -279,8 +278,8 @@ body.music main{padding-bottom:170px}
 <main id="main"></main>
 <div id="toast"></div>
 <div id="modal"></div>
-<div id="dock"><div id="yt"></div><div class="dk"><b id="dkT"></b><small>dari YouTube</small>
-  <div class="row" style="gap:6px;margin-top:6px"><button class="tbtn" id="dkP" title="Jeda/lanjut" onclick="ytToggle()">⏸</button><button class="tbtn" title="Lagu berikutnya" onclick="nextTrack()">⏭</button><button class="tbtn" id="dkL" onclick="cycleLoop()">🔁</button><button class="tbtn" title="Matikan musik" onclick="stopMusic()">✕</button></div></div></div>
+<div id="dock"><div class="dk"><b id="dkT"></b><small>🎵 lofi · HoliznaCC0</small>
+  <div class="row" style="gap:6px;margin-top:6px"><button class="tbtn" id="dkP" title="Jeda/lanjut" onclick="musicToggle()">⏸</button><button class="tbtn" title="Lagu berikutnya" onclick="nextTrack()">⏭</button><button class="tbtn" id="dkL" onclick="cycleLoop()">🔁</button><button class="tbtn" title="Matikan musik" onclick="stopMusic()">✕</button></div></div></div>
 
 <script>
 /* ================= DATA ================= */
@@ -785,57 +784,47 @@ function speak(t, force) {
   speechSynthesis.speak(u);
 }
 
-/* ================= MUSIK BELAJAR (YouTube) ================= */
-// Semua id sudah dicek bisa di-embed (2026-10-03). Siaran langsung 24 jam kadang diganti id baru oleh pemiliknya.
+/* ================= MUSIK BELAJAR (file di folder music/) ================= */
+// Lofi karya HoliznaCC0 dari Free Music Archive, lisensi CC0 1.0 (domain publik). Dikompres ke 96 kbps.
 const TRACKS = [
-  { id: 'jfKfPfyJRdk', t: '📚 Lofi Belajar', d: 'Lofi Girl · siaran langsung 24 jam' },
-  { id: 'Na0w3Mz46GA', t: '⛩️ Lofi Asia', d: 'Lofi Girl · nuansa Jepang & Asia, siaran langsung' },
-  { id: 'HuFYqnbVbzY', t: '🎷 Jazz Lofi', d: 'Lofi Girl · jazz santai, siaran langsung' },
-  { id: '5yx6BWlEVcY', t: '🐾 Chillhop Radio', d: 'Chillhop Music · jazzy & lofi, siaran langsung' },
-  { id: 'lTRiuFIWV54', t: '🕐 1 A.M Study Session', d: 'Lofi Girl · kumpulan lagu belajar malam' },
-  { id: '1fueZCTYkpA', t: '☕ Morning Coffee', d: 'Lofi Girl · lofi pagi yang ringan' },
-  { id: 'rUxyKA_-grg', t: '💤 Lofi Santai', d: 'Lofi Girl · lebih pelan & tenang, siaran langsung' },
-  { id: '4xDzrJKXOOY', t: '🌌 Synthwave', d: 'Lofi Girl · synthwave retro, siaran langsung' },
-  { id: '-5ajVJ1Yxlg', t: '🎹 Piano & Hujan', d: 'Soothing Relaxation · piano dengan suara hujan' },
-  { id: '4khIPP--FDU', t: '🎹 Piano Relaksasi', d: 'Ocb Relax · piano lembut' },
-  { id: 'mPZkdNFkNps', t: '🌧️ Suara Hujan', d: 'Relaxing Ambience · hujan di jendela, tanpa musik' },
+  { id: 'tokyo-sunset', t: '🌇 Tokyo Sunset', d: 'lembut dan damai' },
+  { id: 'calm-currents', t: '🌊 Calm Currents', d: 'tenang, cocok untuk fokus' },
+  { id: 'morning-coffee', t: '☕ Morning Coffee', d: 'santai untuk belajar pagi' },
+  { id: 'ramen', t: '🍜 Ramen', d: 'ringan dan hangat' },
+  { id: 'tranquil-mindscape', t: '🌿 Tranquil Mindscape', d: 'ceria tapi kalem' },
+  { id: 'theta-frequency', t: '🧠 Theta Frequency', d: 'tenang, cocok untuk menghafal' },
+  { id: 'peaceful-drift', t: '☁️ Peaceful Drift', d: 'pelan dan nostalgia' },
+  { id: 'clouds', t: '🌥️ Clouds', d: 'chill dan mengalir' },
+  { id: 'busted-jazz', t: '🎷 Busted Jazz', d: 'jazz lofi santai' },
+  { id: 'ocean-breeze', t: '🏝️ Ocean Breeze', d: 'ukulele yang damai' },
+  { id: 'into-the-mist', t: '🌫️ Into The Mist', d: 'kalem dan rileks' },
+  { id: 'still-life', t: '🖼️ Still Life', d: 'chill dan nostalgia' },
+  { id: 'waiting-around', t: '⏳ Waiting Around', d: 'kalem dan pelan' },
+  { id: 'ease-into-night', t: '🌙 Ease Into Night', d: 'santai untuk belajar malam' },
 ];
 const LOOPS = { one: ['🔂', 'Ulang 1 lagu'], all: ['🔁', 'Putar semua berurutan'], shuffle: ['🔀', 'Acak semua'] };
-let yt = null, ytReady = null, playing = null, fails = 0;
-function loadYT() {
-  return ytReady ||= new Promise(res => {
-    window.onYouTubeIframeAPIReady = () => {
-      yt = new YT.Player('yt', { width: 200, height: 113, playerVars: { playsinline: 1, rel: 0 }, events: {
-        onReady: res,
-        onStateChange: e => {
-          $('#dkP').textContent = e.data === 1 ? '⏸' : '▶';
-          if (e.data === 1) fails = 0;
-          if (e.data === 0) S.loop === 'one' ? (yt.seekTo(0), yt.playVideo()) : nextTrack(); // 0 = lagu selesai
-        },
-        onError: () => { // lewati lagu yang rusak, tapi berhenti kalau semuanya gagal (mis. internet putus)
-          if (S.loop !== 'one' && ++fails < TRACKS.length) { toast('Lagu ini tidak bisa diputar, lanjut ke berikutnya.'); nextTrack(); }
-          else { fails = 0; toast('Musik ini sedang tidak bisa diputar, coba judul lain.'); stopMusic(); }
-        },
-      } });
-    };
-    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api';
-    s.onerror = () => { ytReady = null; stopMusic(); toast('Musik butuh koneksi internet.'); };
-    document.head.append(s);
-  });
-}
-async function playMusic(id) {
+const audio = new Audio(); audio.preload = 'none';
+let playing = null, fails = 0;
+audio.onplaying = () => { fails = 0; $('#dkP').textContent = '⏸'; };
+audio.onpause = () => $('#dkP').textContent = '▶';
+audio.onended = () => nextTrack(); // mode 'one' memakai audio.loop, jadi ended tidak terpanggil
+audio.onerror = () => { // lewati lagu yang gagal dimuat, tapi berhenti kalau semuanya gagal (mis. internet putus)
+  if (!playing) return;
+  if (++fails < TRACKS.length) { toast('Lagu ini gagal dimuat, lanjut ke berikutnya.'); nextTrack(); }
+  else { fails = 0; toast('Musik gagal dimuat, cek koneksi internet.'); stopMusic(); }
+};
+function playMusic(id) {
   if (playing === id) return stopMusic();
-  playing = id; updateMusicUI();
-  await loadYT(); if (playing !== id) return;
-  yt.setVolume(S.vol * 100); yt.loadVideoById(id);
+  playing = id; audio.src = 'music/' + id + '.mp3'; audio.loop = S.loop === 'one'; audio.volume = S.vol;
+  audio.play().catch(() => { }); updateMusicUI();
 }
-function stopMusic() { playing = null; yt?.stopVideo(); updateMusicUI(); }
+function stopMusic() { playing = null; audio.pause(); audio.removeAttribute('src'); audio.load(); updateMusicUI(); }
 const nextId = (cur, mode) => mode === 'shuffle' ? pick(TRACKS.filter(x => x.id !== cur)).id : TRACKS[(TRACKS.findIndex(x => x.id === cur) + 1) % TRACKS.length].id;
 function nextTrack() { const n = nextId(playing, S.loop); playing = null; playMusic(n); }
-function setLoop(m) { S.loop = m; save(); updateMusicUI(); toast(LOOPS[m].join(' ')); }
+function musicToggle() { if (playing) audio.paused ? audio.play() : audio.pause(); }
+function setLoop(m) { S.loop = m; audio.loop = m === 'one'; save(); updateMusicUI(); toast(LOOPS[m].join(' ')); }
 function cycleLoop() { const k = Object.keys(LOOPS); setLoop(k[(k.indexOf(S.loop) + 1) % k.length]); }
-function ytToggle() { if (yt) yt.getPlayerState() === 1 ? yt.pauseVideo() : yt.playVideo(); }
-function setVol(v) { S.vol = +v; yt?.setVolume(S.vol * 100); save(); }
+function setVol(v) { S.vol = +v; audio.volume = S.vol; save(); }
 function updateMusicUI() {
   const t = TRACKS.find(x => x.id === playing);
   $('#dock').classList.toggle('show', !!t); document.body.classList.toggle('music', !!t); $('#musicBtn').classList.toggle('on', !!t);
@@ -844,13 +833,13 @@ function updateMusicUI() {
   if ($('#modal').innerHTML) openMusic();
 }
 function openMusic() {
-  loadYT(); // muat pemutar lebih awal supaya lagu langsung jalan saat dipilih
   $('#modal').innerHTML = `<div class="modal" onclick="if(event.target===this)closeModal()"><div class="card">
     <div class="row"><h2 style="margin:0">🎵 Musik Belajar</h2><span class="sp"></span><button class="tbtn" onclick="closeModal()">✕</button></div>
-    <p class="muted" style="margin:4px 0 14px;font-size:14px">Musik diputar dari YouTube, jadi butuh internet. Musik tetap jalan saat kamu pindah halaman. Ketuk judul yang sedang diputar untuk berhenti.</p>
+    <p class="muted" style="margin:4px 0 14px;font-size:14px">Musik tetap jalan saat kamu pindah halaman. Ketuk judul yang sedang diputar untuk berhenti.</p>
     <div class="grid" style="gap:8px">${TRACKS.map(x => `<button class="gi ${playing === x.id ? 'done' : ''}" onclick="playMusic('${x.id}')"><span class="n">${playing === x.id ? '■' : '▶'}</span><div><b>${x.t}</b><div class="muted">${x.d}</div></div></button>`).join('')}</div>
     <div class="row" style="gap:6px;margin-top:16px">${Object.entries(LOOPS).map(([k, [ic, lbl]]) => `<button class="chip ${S.loop === k ? 'on' : ''}" onclick="setLoop('${k}')">${ic} ${lbl}</button>`).join('')}</div>
     <label class="row" style="margin-top:12px">🔉 Volume <input type="range" min="0" max="1" step="0.05" value="${S.vol}" oninput="setVol(this.value)" style="flex:1"></label>
+    <p class="muted" style="margin:12px 0 0;font-size:12px">Musik: HoliznaCC0 (Free Music Archive), lisensi CC0 / domain publik.</p>
   </div></div>`;
 }
 
