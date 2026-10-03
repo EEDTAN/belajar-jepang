@@ -1948,13 +1948,17 @@ function freshItems() {
   return out;
 }
 const newLeft = () => Math.max(0, Math.min(S.newPerDay - S.newToday, freshItems().length));
-// urutan sesi: kartu baru dulu, lalu kartu jatuh tempo; kartu yang dijawab salah dipindah ke akhir sesi (lihat check)
-const queueOrder = () => [...freshItems().slice(0, newLeft()), ...dueItems()];
+// urutan sesi: kartu baru hari ini dan kartu jatuh tempo diacak bersama, tanpa prioritas
+// (kartu baru MANA yang diambil tetap mengikuti metode tema/bab lewat freshItems)
+const queueOrder = () => shuffle([...freshItems().slice(0, newLeft()), ...dueItems()]);
 function buildQueue() { rollDay(); return queueOrder(); }
-// salah: ditanyakan lagi di akhir sesi, paling cepat setelah REASK_GAP kartu lain. Kalau sisa sesi lebih pendek,
+// salah: diselipkan lagi di posisi acak, paling cepat setelah REASK_GAP kartu lain. Kalau sisa sesi lebih pendek,
 // kartu tidak diulang di sesi ini dan menunggu jadwal SRS-nya (10 menit lagi)
 const REASK_GAP = 10;
-const requeueWrong = (s, it) => { if (s.q.length - 1 - s.i >= REASK_GAP) s.q.push(it); };
+const requeueWrong = (s, it) => {
+  const left = s.q.length - 1 - s.i; // kartu yang tersisa setelah kartu ini
+  if (left >= REASK_GAP) s.q.splice(s.i + 1 + REASK_GAP + Math.floor(Math.random() * (left - REASK_GAP + 1)), 0, it);
+};
 
 /* ================= VIEWS ================= */
 const NAV = [['home', '🏠', 'Beranda'], ['review', '🔁', 'Review'], ['vocab', '📖', 'Kosakata'], ['kanji', '漢', 'Kanji'], ['grammar', '🧩', 'Grammar'], ['quiz', '⚡', 'Kuis']];
@@ -2303,7 +2307,7 @@ const HELP = [
   ['nilai', '🎯 Penilaian jawaban: Lupa · Sulit · Bagus · Mudah', `
     <p>Setiap jawaban di Review dinilai otomatis dari <b>ketepatan</b> dan <b>kecepatan</b>. Nilainya menentukan kapan kartu itu muncul lagi.</p>
     <table><tr><th>Nilai</th><th>Kriteria</th><th>Muncul lagi</th></tr>
-      <tr><td>✗ Lupa</td><td>Jawaban salah, kosong, atau menekan "Tidak tahu".</td><td>Di sesi yang sama, kartu ini dipindah ke paling belakang dan baru ditanyakan lagi setelah minimal 10 kartu lain. Kalau sisa sesi kurang dari itu, kartu ini muncul di sesi berikutnya (jadwalnya 10 menit lagi). Jaraknya dihitung dari awal lagi.</td></tr>
+      <tr><td>✗ Lupa</td><td>Jawaban salah, kosong, atau menekan "Tidak tahu".</td><td>Di sesi yang sama, kartu ini diselipkan lagi di posisi acak, paling cepat setelah 10 kartu lain. Kalau sisa sesi kurang dari itu, kartu ini muncul di sesi berikutnya (jadwalnya 10 menit lagi). Jaraknya dihitung dari awal lagi.</td></tr>
       <tr><td>😅 Sulit</td><td>Benar, tapi ada salah ketik kecil atau butuh lebih dari 20 detik.</td><td>Jaraknya hanya bertambah sedikit (minimal 1 hari).</td></tr>
       <tr><td>✓ Bagus</td><td>Benar dengan waktu biasa.</td><td>Besok, lalu 3 hari lagi, lalu sekitar 2,5× jarak sebelumnya.</td></tr>
       <tr><td>⚡ Mudah</td><td>Benar dan cepat: kira-kira 4 detik ditambah 0,2 detik per huruf yang diketik.</td><td>3 hari lagi, lalu jaraknya melebar lebih cepat daripada Bagus.</td></tr></table>
@@ -2329,9 +2333,9 @@ const HELP = [
     <p>Salah ketik kecil (biasanya satu huruf) pada kata yang agak panjang tetap dianggap benar, tapi nilainya menjadi Sulit. Kata yang pendek harus diketik tepat.</p>`],
   ['baru', '✨ Kartu baru & kartu jatuh tempo', `
     <ul><li><b>Kartu baru</b>: kata atau kanji yang belum pernah kamu pelajari. Jumlahnya per hari diatur di Pengaturan ("Kartu baru/hari", bawaannya 10). Kartu baru muncul dulu sebagai perkenalan, lalu diuji 2 kartu kemudian.</li>
-      <li><b>Jatuh tempo</b>: kartu lama yang jadwal ulangnya sudah tiba, diurutkan dari yang paling lama menunggu.</li>
-      <li>Urutan satu sesi Review: <b>kartu baru dulu</b>, lalu kartu jatuh tempo, lalu kartu yang tadi dijawab salah di paling belakang.</li>
-      <li>Kartu baru diambil dengan pola 2 kosakata lalu 1 kanji.</li>
+      <li><b>Jatuh tempo</b>: kartu lama yang jadwal ulangnya sudah tiba.</li>
+      <li>Urutan kartu dalam satu sesi Review <b>diacak</b>: kartu baru dan kartu jatuh tempo bercampur tanpa prioritas.</li>
+      <li>Kartu baru yang diambil tiap hari mengikuti urutan tema atau bab (sesuai metode belajar), dengan pola 2 kosakata untuk setiap 1 kanji.</li>
       <li>Angka di samping menu Review adalah jumlah kartu jatuh tempo ditambah sisa kartu baru hari ini.</li></ul>`],
   ['progres', '📈 Angka-angka di Beranda', `
     <ul><li>🔥 <b>Hari beruntun</b>: berapa hari berturut-turut kamu belajar, yaitu menjawab kartu Review, menuntaskan satu pola grammar, atau bermain Kuis Kilat. Kalau ada hari yang terlewat, hitungannya mulai lagi dari 1.</li>
@@ -2670,11 +2674,13 @@ function runTests() {
     const vIku = BYW['行く']; eq(sentencesFor(vIku, vIku.ex, 99).slice(2).every(x => x[2] <= 5), true, 'contoh tambahan tidak melompati bab');
     S = defaults(); eq(freshItems()[0], VOCAB[0], 'metode tema mulai dari tema pertama');
     S.cards[VOCAB[5].id] = { due: 0, ivl: 1, reps: 1, ease: 2.5, lapses: 0 }; // satu kartu lama jatuh tempo
-    const qo = queueOrder(); eq(!S.cards[qo[0].id], true, 'kartu baru didahulukan'); eq(qo[qo.length - 1], VOCAB[5], 'kartu jatuh tempo setelah kartu baru');
+    const qo = queueOrder(); eq(qo.length, 11, 'sesi = 10 kartu baru + 1 jatuh tempo'); eq(qo.includes(VOCAB[5]), true, 'kartu jatuh tempo ikut di sesi');
+    eq(new Set(qo).size, qo.length, 'sesi tanpa kartu dobel');
   } finally { S = keep; }
   const sv = S.voice; S.voice = false; for (let i = 0; i < 60; i++) if (genQ().audio) { S.voice = sv; throw new Error('soal dengar muncul saat suara mati'); } S.voice = sv;
-  const rq1 = { q: [...'abcdefghijk'], i: 0 }; requeueWrong(rq1, 'a'); eq(rq1.q.join(''), 'abcdefghijka', 'kartu salah ke akhir, minimal 10 kartu kemudian');
+  const rq1 = { q: [...'abcdefghijk'], i: 0 }; requeueWrong(rq1, 'a'); eq(rq1.q.join(''), 'abcdefghijka', 'kartu salah: minimal 10 kartu kemudian');
   const rq2 = { q: [...'abcdefghij'], i: 0 }; requeueWrong(rq2, 'a'); eq(rq2.q.join(''), 'abcdefghij', 'sisa < 10 kartu: tidak diulang di sesi ini');
+  for (let t = 0; t < 50; t++) { const rq3 = { q: [...Array(30).keys()], i: 4 }; requeueWrong(rq3, 'x'); const p = rq3.q.indexOf('x'); if (p < 4 + 1 + REASK_GAP || p > 30) throw new Error('posisi kartu salah tidak jauh: ' + p); }
   const T0 = TRACKS[0].id, TL = TRACKS[TRACKS.length - 1].id;
   eq(nextId(T0, 'all'), TRACKS[1].id, 'musik berurutan'); eq(nextId(TL, 'all'), T0, 'musik kembali ke awal');
   for (let i = 0; i < 30; i++) if (nextId(T0, 'shuffle') === T0) throw new Error('acak memutar lagu yang sama');
