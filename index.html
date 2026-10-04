@@ -196,9 +196,28 @@ details.info p{margin:6px 0}
 .ist td{padding:6px 4px;border-top:1px solid var(--line);vertical-align:top}
 .ist td:first-child{width:1%;white-space:nowrap}
 .whyk table{width:100%;border-collapse:collapse;font-size:14.5px;margin:4px 0 12px}
-.whyk td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.whyk td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.6}
 .whyk td:first-child{white-space:nowrap;width:1%;font:700 16px 'Noto Sans JP',sans-serif;color:var(--pink)}
-.gx{margin:4px 0 12px;padding-left:18px;font-size:14.5px}.gx li{margin:5px 0}
+.gx{margin:4px 0 12px;padding-left:22px;font-size:14.5px;line-height:1.65}.gx li{margin:8px 0;padding-left:2px}.gx li::marker{color:var(--violet);font-weight:800}
+.gsec{margin-top:22px}.gsec>.lbl{font-size:12px;margin-bottom:8px}
+.lead{font-size:16px;line-height:1.6;margin:12px 0 4px}
+.box{margin:10px 0;padding:12px 14px;border-radius:14px;font-size:14.5px;line-height:1.65;border:1px solid var(--line)}
+.box>b:first-child{display:block;margin-bottom:4px}
+.box.warn{background:rgba(233,59,99,.07);border-color:rgba(233,59,99,.25)}.box.warn>b:first-child{color:var(--bad)}
+.box.tip{background:rgba(232,149,12,.09);border-color:rgba(232,149,12,.28)}.box.tip>b:first-child{color:var(--warn)}
+.box p{margin:4px 0}
+.xx{color:var(--bad);font-weight:800}.okx{color:var(--good);font-weight:800}
+/* partikel berwarna: は pink, の ungu, lainnya cyan */
+.pt{color:var(--cyan);font-weight:800}.pt.wa{color:var(--pink)}.pt.no{color:var(--violet)}
+.ptl{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);margin:0 0 4px}
+details.pk{margin:8px 0;border-radius:14px;border:1px solid var(--line);background:var(--glass);font-size:14.5px;line-height:1.65}
+details.pk summary{cursor:pointer;padding:11px 14px;font-weight:800}
+details.pk>div{padding:0 14px 12px}details.pk p{margin:6px 0}
+details.pk table{width:100%;border-collapse:collapse;margin:6px 0}
+details.pk td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:top}
+details.pk td:first-child{width:40%;font-size:13.5px;color:var(--muted)}
+details.pk td small{display:block;color:var(--muted)}
+@media (min-width:761px){#exc{position:sticky;top:84px}}
 .kb{margin-top:12px;padding:8px;border-radius:18px;background:var(--glass);border:1px solid var(--line)}
 .kbg{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}
 .kbf{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr 1.3fr 2fr;gap:4px;margin-top:6px}
@@ -2886,6 +2905,7 @@ const gOrder = () => { const ix = GRAMMAR.map((_, i) => i); return babMode() ? i
 function vGrammarList() {
   return `<div class="row"><h1>🧩 Grammar N5${helpBtn('grammar')}</h1><span class="sp"></span><span class="muted">${Object.keys(S.grammar).length}/${GRAMMAR.length} tuntas</span></div>
   <p class="muted">Satu pola per hari sudah cukup. Baca → dengarkan contoh → susun kalimat sendiri.${babMode() ? ' Urut sesuai bab Minna no Nihongo I.' : ''}</p>
+  <div class="card" style="margin-bottom:16px"><span class="lbl">📌 Partikel yang sering tertukar</span>${PARTIKEL.map(p => pkHTML(p, false)).join('')}</div>
   <div class="gl">${gOrder().map((i, n) => { const g = GRAMMAR[i]; return `<a class="gi ${S.grammar[i] ? 'done' : ''}" href="#grammar/${i}" style="animation:rise .35s ${n * .02}s both">
     <span class="n">${S.grammar[i] ? '✓' : n + 1}</span><div><div class="p">${g.t}</div><div class="muted" style="font-size:13px">📘 Bab ${g.b} · ${g.q.length} latihan</div></div></a>`; }).join('')}</div>`;
 }
@@ -2917,6 +2937,85 @@ function istilahDi(g) {
   if (/(?:^|[^A-Za-z])(KB|KK|KS|S|O|P)\d/.test(t)) ada.add('1, 2');
   return ISTILAH.filter(([k]) => ada.has(k));
 }
+// partikel di ujung frasa (kalimat contoh ditulis berspasi per frasa); whole=true: kepingan latihan yang isinya partikel saja
+const PTK = ['から', 'まで', 'より', 'には', 'では', 'にも', 'でも', 'へも', 'とも', 'は', 'の', 'を', 'に', 'で', 'へ', 'と', 'も', 'が', 'か'];
+const NOTP = /^(?:とても|いつも|どうも|でも|では|それで|それでは|こんにちは|こんばんは|[こそあど]の|.*(?:っと|[いん]で|いに|もの|ひと|うと))$/; // bukan partikel
+function ptChunk(ch, whole) { // → [kata, partikel, tanda baca] atau null
+  const [, body, tail] = ch.match(/^(.*?)([。、？！」]*)$/);
+  if (whole && PTK.includes(body)) return ['', body, tail];
+  if (NOTP.test(body)) return null;
+  const p = PTK.find(p => body.endsWith(p) && body.length > p.length && (p !== 'か' || /[すんう]か$/.test(body)));
+  return p ? [body.slice(0, -p.length), p, tail] : null;
+}
+const ptCls = p => 'pt' + (p === 'は' ? ' wa' : p === 'の' ? ' no' : '');
+const hlJP = (s, whole) => s.split(/(\s+)/).map(c => { const x = ptChunk(c, whole); return x ? `${furi(x[0])}<span class="${ptCls(x[1])}">${x[1]}</span>${x[2]}` : furi(c); }).join('');
+const PT_LEGEND = `<div class="ptl"><span>Warna partikel:</span><span class="pt wa">は</span><span class="pt no">の</span><span class="pt">を・に・で・が・も…</span></div>`;
+function ptOf(g) { // partikel yang muncul di contoh & latihan sebuah pola
+  const txt = [...g.ex.map(x => x[0]), ...g.q.map(parseEx).map(e => e.t === 'o' ? e.tok.join(' ') : [e.q.replace('___', e.o[0]), ...e.o].join(' '))].join(' ');
+  return new Set(txt.split(/\s+/).flatMap(c => { const x = ptChunk(c, true); return !x ? [] : /^[にでへと][はも]$/.test(x[1]) ? [...x[1]] : [x[1]]; }));
+}
+// partikel yang sering tertukar: tampil di pola yang memakainya, semuanya ada di daftar Grammar
+const PARTIKEL = [
+  { id: 'wano', on: s => s.has('は') && s.has('の'), t: 'は dan の: kenapa posisinya kadang tertukar?',
+    tip: 'A の B selalu satu paket (B tepat sesudah の), dan は ditaruh tepat sesudah topik. Kalau paket の itu topiknya, urutannya の dulu baru は; kalau topiknya kata lain, は dulu baru paket の.',
+    b: `<p><b class="pt no">の</b> adalah lem antara dua kata benda. A の B artinya B milik A, atau B yang ada hubungannya dengan A. A, の, dan B selalu menempel jadi satu paket, dan B datang tepat sesudah の: 私[わたし]の かばん.</p>
+      <p><b class="pt wa">は</b> (dibaca wa) ditaruh tepat sesudah <b>topik</b>, yaitu hal yang sedang dibicarakan.</p>
+      <p>Jadi posisi keduanya ditentukan oleh satu pertanyaan: <b>paket の itu topiknya atau bukan?</b></p>
+      <table>
+        <tr><td>Paket の jadi topik → の dulu, baru は</td><td>私[わたし]<span class="pt no">の</span> 名前[なまえ]<span class="pt wa">は</span> アリです。<small>Nama saya Ali. (yang dibicarakan: nama saya)</small></td></tr>
+        <tr><td>Topiknya kata lain → は dulu, paket の di belakang</td><td>これ<span class="pt wa">は</span> 私[わたし]<span class="pt no">の</span> かばんです。<small>Ini tas saya. (yang dibicarakan: これ)</small></td></tr>
+        <tr><td>Bisa juga dua-duanya</td><td>私[わたし]<span class="pt no">の</span> 先生[せんせい]<span class="pt wa">は</span> 日本人[にほんじん]<span class="pt no">の</span> 先生[せんせい]です。<small>Guru saya guru orang Jepang.</small></td></tr>
+      </table>
+      <p><b>Langkah menyusun:</b> 1) cari topiknya, lalu beri は; 2) gabungkan A の B jadi satu paket; 3) tutup dengan です atau kata kerja di paling akhir.</p>
+      <div class="box warn"><b>⚠️ Sering salah</b>は menyela paket の: 私[わたし]は の かばん <span class="xx">✗</span>. A dan B terbalik: かばんの 私[わたし] <span class="xx">✗</span> (artinya jadi "saya milik tas"). Yang benar: これは 私[わたし]の かばんです <span class="okx">✓</span>.</div>` },
+  { id: 'ga', on: s => s.has('が'), t: 'Kapan pakai が, bukan は atau を?',
+    tip: 'Sesudah kata tanya (だれが, 何[なに]が) dan di jawabannya pakai が. Benda yang disukai, dikuasai, dimengerti, dimiliki, atau diinginkan juga ditandai が, bukan を.',
+    b: `<p><b class="pt wa">は</b> menandai topik, hal yang sudah jelas sedang dibicarakan: 私[わたし]は 学生[がくせい]です。</p>
+      <p><b class="pt">が</b> dipakai dalam dua keadaan berikut.</p>
+      <table>
+        <tr><td>Sesudah kata tanya, dan di jawabannya</td><td>だれ<span class="pt">が</span> 来[き]ましたか。<small>Siapa yang datang?</small>田中[たなか]さん<span class="pt">が</span> 来[き]ました。<small>Tanaka-san yang datang.</small></td></tr>
+        <tr><td>Benda yang disukai, dikuasai, dimengerti, dimiliki, atau diinginkan</td><td>私[わたし]<span class="pt wa">は</span> 猫[ねこ]<span class="pt">が</span> 好[す]きです。<small>Saya suka kucing.</small>日本語[にほんご]<span class="pt">が</span> わかります。<small>(Saya) mengerti bahasa Jepang.</small></td></tr>
+      </table>
+      <p>Kata yang memakai が untuk bendanya: 好[す]き, 嫌[きら]い, 上手[じょうず], 下手[へた], わかります, あります, ほしい.</p>
+      <div class="box warn"><b>⚠️ Sering salah</b>Kata tanya diberi は: だれは 来[き]ましたか <span class="xx">✗</span>. Memakai を dengan 好[す]き atau わかります: 日本語[にほんご]を わかります <span class="xx">✗</span> → 日本語[にほんご]が わかります <span class="okx">✓</span>.</div>` },
+  { id: 'nide', on: s => s.has('に') || s.has('で'), t: 'に atau で untuk tempat?',
+    tip: 'Lihat kata kerjanya. あります, います, 行[い]きます, 来[き]ます, 帰[かえ]ります → に (tempat berada/tujuan). Kata kerja kegiatan seperti 食[た]べます, 勉強[べんきょう]します, 買[か]います → で (tempat kegiatan).',
+    b: `<table>
+        <tr><td><b class="pt">に</b>: titik tempat sesuatu berada, atau titik tujuan</td><td>部屋[へや]<span class="pt">に</span> います。<small>Ada di kamar.</small>日本[にほん]<span class="pt">に</span> 行[い]きます。<small>Pergi ke Jepang.</small></td></tr>
+        <tr><td><b class="pt">で</b>: tempat sebuah kegiatan berlangsung</td><td>図書館[としょかん]<span class="pt">で</span> 勉強[べんきょう]します。<small>Belajar di perpustakaan.</small></td></tr>
+        <tr><td><b class="pt">で</b> juga untuk alat atau cara</td><td>バス<span class="pt">で</span> 行[い]きます。<small>Pergi naik bus.</small></td></tr>
+        <tr><td><b class="pt">に</b> juga untuk waktu yang pasti</td><td>七時[しちじ]<span class="pt">に</span> 起[お]きます。<small>Bangun jam tujuh.</small></td></tr>
+      </table>
+      <div class="box tip"><b>💡 Cara cek</b>Lihat kata kerja di akhir kalimat. あります, います, 住[す]んで います, 行[い]きます, 来[き]ます, 帰[かえ]ります → に. Kata kerja kegiatan seperti 食[た]べます, 勉強[べんきょう]します, 買[か]います, 働[はたら]きます → で.</div>` },
+  { id: 'he', on: s => s.has('へ'), t: 'へ atau に untuk "pergi ke"?',
+    tip: 'Dengan 行[い]きます, 来[き]ます, dan 帰[かえ]ります, へ dan に sama-sama benar. へ dibaca e.',
+    b: `<p>Dengan 行[い]きます, 来[き]ます, dan 帰[かえ]ります, keduanya benar: 日本[にほん]<span class="pt">へ</span> 行[い]きます = 日本[にほん]<span class="pt">に</span> 行[い]きます. へ menekankan arahnya, に menekankan titik tujuannya.</p>
+      <p>Sebagai partikel, へ dibaca <b>e</b>, bukan he.</p>` },
+  { id: 'mo', on: s => s.has('も'), t: 'も menggantikan は, が, dan を',
+    tip: 'も menggantikan は, が, atau を (jangan ditumpuk: はも ✗). Partikel lain seperti に dan で tetap ada: にも, でも.',
+    b: `<table>
+        <tr><td>Menggantikan は, が, を</td><td>私[わたし]<span class="pt">も</span> 学生[がくせい]です。<small>Saya juga pelajar.</small>パン<span class="pt">も</span> 食[た]べます。<small>Roti juga (saya) makan.</small></td></tr>
+        <tr><td>Partikel lain tetap ada, も ditaruh sesudahnya</td><td>東京[とうきょう]<span class="pt">にも</span> 行[い]きました。<small>Ke Tokyo juga (saya) pergi.</small></td></tr>
+      </table>
+      <div class="box warn"><b>⚠️ Sering salah</b>Menumpuk partikel: 私[わたし]はも <span class="xx">✗</span>, パンをも <span class="xx">✗</span>.</div>` },
+  { id: 'baca', on: () => false, t: 'は, へ, を dibaca wa, e, o',
+    b: `<p>Sebagai partikel, <b class="pt wa">は</b> dibaca <b>wa</b>, <b class="pt">へ</b> dibaca <b>e</b>, dan <b class="pt">を</b> dibaca <b>o</b>. Di dalam kata biasa bacaannya tetap: はい (hai), はじめまして (hajimemashite), 部屋[へや] (heya).</p>` },
+];
+const pkHTML = (p, open) => `<details class="pk" ${open ? 'open' : ''}><summary>${p.t}</summary><div>${furi(p.b)}</div></details>`;
+// poin penjelasan: "Kesalahan umum" jadi kotak merah, "Tips" jadi kotak kuning, label awal ("Cara menyusun:") ditebalkan
+const markX = s => s.replace(/✗/g, '<span class="xx">✗</span>').replace(/✓/g, '<span class="okx">✓</span>');
+function gxHTML(x) {
+  const norm = [], warn = [], tip = [];
+  x.forEach(s => {
+    const [a, b] = s.split(/Kesalahan umum:\s*/);
+    if (a.trim()) (/^(Tips|Cara mudah mengingat):/.test(a) ? tip : norm).push(a.replace(/^(Tips|Cara mudah mengingat):\s*/, ''));
+    if (b !== undefined) warn.push(b[0].toUpperCase() + b.slice(1));
+  });
+  const li = s => `<li>${markX(furi(s)).replace(/^([A-Z][A-Za-z ]{2,30}):/, '<b>$1:</b>')}</li>`;
+  return `${norm.length ? `<ol class="gx">${norm.map(li).join('')}</ol>` : ''}
+    ${warn.length ? `<div class="box warn"><b>⚠️ Sering salah</b>${warn.map(s => `<p>${markX(furi(s))}</p>`).join('')}</div>` : ''}
+    ${tip.length ? `<div class="box tip"><b>💡 Tips</b>${tip.map(s => `<p>${markX(furi(s))}</p>`).join('')}</div>` : ''}`;
+}
 function vGrammar(arg) {
   const i = parseInt(arg);
   if (isNaN(i) || !GRAMMAR[i]) return vGrammarList();
@@ -2931,13 +3030,13 @@ function vGrammar(arg) {
     const ex = GS.ex, res = GS.res;
     if (ex.t === 'o') {
       exHTML = `<p class="muted">Susun kalimat: <b style="color:var(--text)">${esc(ex.tr)}</b></p>
-        <div class="slot ${res || ''}" id="slot">${GS.sel.map((k, n) => `<button class="tok" onclick="unpickTok(${n})">${furi(ex.tok[k])}</button>`).join('') || '<span class="muted">Klik kepingan di bawah…</span>'}</div>
-        <div class="pool">${GS.pool.map((k, n) => `<button class="tok" onclick="pickTok(${n})">${furi(ex.tok[k])}</button>`).join('')}</div>
-        ${GS.showAns ? `<div class="ex"><span class="jp">${furi(ex.tok.join(''))}</span></div>` : ''}`;
+        <div class="slot ${res || ''}" id="slot">${GS.sel.map((k, n) => `<button class="tok" onclick="unpickTok(${n})">${hlJP(ex.tok[k], true)}</button>`).join('') || '<span class="muted">Klik kepingan di bawah…</span>'}</div>
+        <div class="pool">${GS.pool.map((k, n) => `<button class="tok" onclick="pickTok(${n})">${hlJP(ex.tok[k], true)}</button>`).join('')}</div>
+        ${GS.showAns ? `<div class="ex"><span class="jp">${ex.tok.map(t => hlJP(t, true)).join('')}</span></div>` : ''}`;
     } else {
       const filled = GS.pick !== null ? `<span class="blank">${furi(ex.o[GS.pick])}</span>` : '<span class="blank">？</span>';
       exHTML = `<p class="muted">Pilih yang tepat: <b style="color:var(--text)">${esc(ex.tr)}</b></p>
-        <div class="jp" id="slot" style="font-size:24px;text-align:center;padding:10px">${furi(ex.q).replace('___', filled)}</div>
+        <div class="jp" id="slot" style="font-size:24px;text-align:center;padding:10px">${hlJP(ex.q).replace('___', filled)}</div>
         <div class="opts">${GS.opts.map(k => `<button class="opt ${GS.pick === k ? (k === 0 ? 'ok' : 'bad') : res === 'ok' && k === 0 ? 'ok' : ''}" onclick="pickOpt(${k})">${furi(ex.o[k])}</button>`).join('')}</div>`;
     }
     exHTML += `<div class="row" style="margin-top:14px">
@@ -2945,23 +3044,33 @@ function vGrammar(arg) {
         : `${res === 'bad' ? `<b style="color:var(--bad)">✗ Belum tepat, coba lagi</b>` : ''}<span class="sp"></span>
            ${GS.tries >= 1 && ex.t === 'o' && !GS.showAns ? `<button class="btn ghost" onclick="GS.showAns=true;render()">Lihat jawaban</button>` : ''}
            ${ex.t === 'o' ? `<button class="btn" onclick="checkTok()" ${GS.pool.length ? 'disabled style="opacity:.5"' : ''}>Periksa</button>` : ''}`}
-    </div>`;
+    </div>${GS.tries && res !== 'ok' ? exHint(ex) : ''}`;
   }
+  const pks = PARTIKEL.filter(p => p.on(ptOf(g)));
   return `<a href="#grammar" class="muted" style="text-decoration:none">← Semua pola</a>
   <div class="grid g2" style="margin-top:10px;align-items:start">
     <div class="card"><span class="chip">Pola ${pos + 1} / ${GRAMMAR.length}</span> <span class="chip">📘 Bab ${g.b}</span><div><span class="pat">${g.t}</span></div>
-      ${g.r ? `<div class="rumus"><span class="lbl">📐 Rumus kalimat</span>${g.r.map(r => `<div class="rm">${rumusHTML(r)}</div>`).join('')}
-        <div class="rcx"><small class="muted">Contoh susunan</small><div class="rm">${rumusHTML(g.s.split(' → ')[0])}</div><div class="jp">→ ${furi(g.s.split(' → ')[1])}</div></div>
-        <table class="ist">${istilahDi(g).map(([k, n, a]) => `<tr><td><span class="rr">${k}</span></td><td>${n ? `<b>${n}.</b> ` : ''}${furi(a)}</td></tr>`).join('')}</table></div>` : ''}
-      <p>${g.d}</p>
-      ${g.k ? `<div class="whyk"><span class="lbl">❓ Kenapa pakai…?</span><table>${g.k.map(([u, a]) => `<tr><td>${furi(u)}</td><td>${furi(a)}</td></tr>`).join('')}</table></div>` : ''}
-      ${g.x ? `<span class="lbl">📝 Penjelasan detail</span><ul class="gx">${g.x.map(s => `<li>${furi(s)}</li>`).join('')}</ul>` : ''}
-      <span class="lbl">💬 Contoh kalimat</span>
-      ${g.ex.map(([jp, id]) => `<div class="ex"><div class="row"><span class="jp">${furi(jp)}</span><span class="sp"></span>${spk(kana(jp))}</div><div class="muted">${esc(id)}</div></div>`).join('')}
+      <p class="lead">${g.d}</p>
+      ${g.r ? `<div class="gsec"><span class="lbl">📐 Rumus kalimat</span><div class="rumus" style="margin-top:0">${g.r.map(r => `<div class="rm">${rumusHTML(r)}</div>`).join('')}
+        <div class="rcx"><small class="muted">Contoh susunan</small><div class="rm">${rumusHTML(g.s.split(' → ')[0])}</div><div class="jp">→ ${hlJP(g.s.split(' → ')[1])}</div></div>
+        <table class="ist">${istilahDi(g).map(([k, n, a]) => `<tr><td><span class="rr">${k}</span></td><td>${n ? `<b>${n}.</b> ` : ''}${furi(a)}</td></tr>`).join('')}</table></div></div>` : ''}
+      ${g.k ? `<div class="gsec whyk"><span class="lbl">❓ Kenapa pakai…?</span><table>${g.k.map(([u, a]) => `<tr><td>${furi(u)}</td><td>${markX(furi(a))}</td></tr>`).join('')}</table></div>` : ''}
+      ${g.x ? `<div class="gsec"><span class="lbl">📝 Penjelasan detail</span>${gxHTML(g.x)}</div>` : ''}
+      <div class="gsec"><span class="lbl">💬 Contoh kalimat</span>${PT_LEGEND}
+      ${g.ex.map(([jp, id]) => `<div class="ex"><div class="row"><span class="jp">${hlJP(jp)}</span><span class="sp"></span>${spk(kana(jp))}</div><div class="muted">${esc(id)}</div></div>`).join('')}</div>
+      ${pks.length ? `<div class="gsec" id="pks"><span class="lbl">📌 Partikel yang sering tertukar</span>${pks.map(p => pkHTML(p, p.id === 'wano' && g.t.includes('の'))).join('')}</div>` : ''}
     </div>
     <div class="card" id="exc"><div class="row"><h2>✍️ Latihan${helpBtn('grammar')}</h2><span class="sp"></span><span class="muted">${Math.min(GS.e + 1, g.q.length)} / ${g.q.length}</span></div>
       <div class="prog"><i style="width:${GS.e / g.q.length * 100}%"></i></div>${exHTML}</div>
   </div>`;
+}
+// petunjuk setelah salah: susun kalimat → aturan urutan + partikel di kepingan; pilihan ganda → partikel di pilihan jawaban
+function exHint(ex) {
+  const s = ptOf({ ex: [], q: [ex.t === 'o' ? 'o|' + ex.tok.join('/') + '|' : 'm|___||' + ex.o.join('|')] });
+  const pk = PARTIKEL.filter(p => p.tip && p.on(s));
+  const tips = [...(ex.t === 'o' ? ['Partikel selalu menempel di belakang kata yang ditandainya, dan です atau kata kerja ada di paling akhir.'] : []), ...pk.map(p => p.tip)];
+  return tips.length ? `<div class="box tip" style="margin-top:14px"><b>💡 Petunjuk</b>${tips.map(t => `<p>${furi(t)}</p>`).join('')}
+    ${pk.length ? '<p class="muted" style="font-size:13px">Penjelasan lengkap dengan contoh ada di bagian 📌 Partikel yang sering tertukar (di bawah contoh kalimat).</p>' : ''}</div>` : '';
 }
 function pickTok(n) { if (GS.res === 'ok') return; GS.sel.push(GS.pool.splice(n, 1)[0]); GS.res = null; render(); }
 function unpickTok(n) { if (GS.res === 'ok') return; GS.pool.push(GS.sel.splice(n, 1)[0]); GS.res = null; render(); }
@@ -3229,6 +3338,9 @@ function runTests() {
   eq(istilahDi({ r: ['S + は + K-waktu + O + を + KK-ます(tanpa ます) + たいです', 'KS-na/KB1 + Kalimat(BB)'], s: 'KK1-て、 + P → x' }).map(x => x[0]).join(), 'S,K,O,P,KB,KK,KK-ます,KK-て,KS,BB,Kalimat,1, 2', 'istilahDi()');
   eq(istilahDi({ r: ['Kelompok I: bunyi -i', 'Pertanyaan: KK-ない(い→ければ)'], s: 'Nama + さん → x' }).map(x => x[0]).join(), 'KK,KK-ない', 'istilahDi() kata biasa');
   ISTILAH.forEach(([k, , a]) => { if (/[一-鿿]/.test(a.replace(RB, ''))) throw new Error('istilah ' + k + ': kanji tanpa furigana'); });
+  PARTIKEL.forEach(p => [p.b, p.tip || ''].forEach(s => { if (/[一-鿿]/.test(s.replace(RB, ''))) throw new Error('partikel ' + p.id + ': kanji tanpa furigana'); }));
+  [['私[わたし]の', 'の'], ['これは', 'は'], ['ですか。', 'か'], ['東京[とうきょう]にも', 'にも'], ['この', undefined], ['飲[の]んで', undefined], ['どこか', undefined], ['とても', undefined], ['ちょっと', undefined]].forEach(([c, p]) => eq(ptChunk(c)?.[1], p, 'partikel di ' + c));
+  eq(ptChunk('は', true)?.[1], 'は', 'kepingan partikel'); eq(PARTIKEL.find(p => p.id === 'wano').on(ptOf(GRAMMAR[3])), true, 'pola A の B memakai は/の');
   console.log(`✅ Semua self-check lulus (${VOCAB.length} kosakata, ${KANJI.length} kanji, ${GRAMMAR.length} grammar)`);
   toast('✅ Self-check lulus');
 }
