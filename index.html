@@ -2957,17 +2957,27 @@ function ptOf(g) { // partikel yang muncul di contoh & latihan sebuah pola
 // partikel yang sering tertukar: tampil di pola yang memakainya, semuanya ada di daftar Grammar
 const PARTIKEL = [
   { id: 'wano', on: s => s.has('は') && s.has('の'), t: 'は dan の: kenapa posisinya kadang tertukar?',
-    tip: 'A の B selalu satu paket (B tepat sesudah の), dan は ditaruh tepat sesudah topik. Kalau paket の itu topiknya, urutannya の dulu baru は; kalau topiknya kata lain, は dulu baru paket の.',
+    tip: 'Cari topiknya dengan tes "Kalau soal ___, …": kata yang pas mengisi titik-titik itulah topiknya, dan は ditaruh tepat sesudahnya. A の B selalu satu paket (B tepat sesudah の). Kalau paket の itu topiknya, の dulu baru は; kalau topiknya kata lain, は dulu baru paket の.',
     b: `<p><b class="pt no">の</b> adalah lem antara dua kata benda. A の B artinya B milik A, atau B yang ada hubungannya dengan A. A, の, dan B selalu menempel jadi satu paket, dan B datang tepat sesudah の: 私[わたし]の かばん.</p>
-      <p><b class="pt wa">は</b> (dibaca wa) ditaruh tepat sesudah <b>topik</b>, yaitu hal yang sedang dibicarakan.</p>
-      <p>Jadi posisi keduanya ditentukan oleh satu pertanyaan: <b>paket の itu topiknya atau bukan?</b></p>
+      <p><b class="pt wa">は</b> (dibaca wa) ditaruh tepat sesudah <b>topik</b>. Topik adalah orang atau benda yang sedang <b>diterangkan</b> oleh kalimat itu. Semua yang ada sesudah は adalah keterangan tentang topik tadi.</p>
+      <div class="box tip"><b>🔎 Cara menemukan topik</b>
+        <p>Baca terjemahan soalnya, lalu coba ucapkan: <b>"Kalau soal ___, …"</b>. Kata yang pas mengisi titik-titik itulah topiknya. Kata tanya seperti だれ, 何[なん], dan どこ tidak pernah jadi topik.</p>
+        <table>
+          <tr><td>Ini tas saya.<small>Kalau soal <b>ini</b>, tas saya.</small></td><td>Topik: これ<br>これ<span class="pt wa">は</span> 私[わたし]<span class="pt no">の</span> かばんです。</td></tr>
+          <tr><td>Nama saya Ali.<small>Kalau soal <b>nama saya</b>, Ali.</small></td><td>Topik: 私[わたし]の 名前[なまえ]<br>私[わたし]<span class="pt no">の</span> 名前[なまえ]<span class="pt wa">は</span> アリです。</td></tr>
+          <tr><td>Guru Anda siapa?<small>Kalau soal <b>guru Anda</b>, siapa?</small></td><td>Topik: あなたの 先生[せんせい]<br>あなた<span class="pt no">の</span> 先生[せんせい]<span class="pt wa">は</span> だれですか。</td></tr>
+          <tr><td>Mbak Rina mahasiswi Universitas Aoba.<small>Kalau soal <b>Mbak Rina</b>, mahasiswi Universitas Aoba.</small></td><td>Topik: リナさん<br>リナさん<span class="pt wa">は</span> あおば大学[だいがく]<span class="pt no">の</span> 学生[がくせい]です。</td></tr>
+        </table>
+      </div>
+      <p>Sesudah topiknya ketemu, posisi は dan の tinggal mengikuti satu pertanyaan: <b>paket の itu topiknya atau bukan?</b></p>
       <table>
         <tr><td>Paket の jadi topik → の dulu, baru は</td><td>私[わたし]<span class="pt no">の</span> 名前[なまえ]<span class="pt wa">は</span> アリです。<small>Nama saya Ali. (yang dibicarakan: nama saya)</small></td></tr>
         <tr><td>Topiknya kata lain → は dulu, paket の di belakang</td><td>これ<span class="pt wa">は</span> 私[わたし]<span class="pt no">の</span> かばんです。<small>Ini tas saya. (yang dibicarakan: これ)</small></td></tr>
         <tr><td>Bisa juga dua-duanya</td><td>私[わたし]<span class="pt no">の</span> 先生[せんせい]<span class="pt wa">は</span> 日本人[にほんじん]<span class="pt no">の</span> 先生[せんせい]です。<small>Guru saya guru orang Jepang.</small></td></tr>
       </table>
       <p><b>Langkah menyusun:</b> 1) cari topiknya, lalu beri は; 2) gabungkan A の B jadi satu paket; 3) tutup dengan です atau kata kerja di paling akhir.</p>
-      <div class="box warn"><b>⚠️ Sering salah</b>は menyela paket の: 私[わたし]は の かばん <span class="xx">✗</span>. A dan B terbalik: かばんの 私[わたし] <span class="xx">✗</span> (artinya jadi "saya milik tas"). Yang benar: これは 私[わたし]の かばんです <span class="okx">✓</span>.</div>` },
+      <div class="box warn"><b>⚠️ Sering salah</b>は menyela paket の: 私[わたし]は の かばん <span class="xx">✗</span>. A dan B terbalik: かばんの 私[わたし] <span class="xx">✗</span> (artinya jadi "saya milik tas"). Yang benar: これは 私[わたし]の かばんです <span class="okx">✓</span>.</div>
+      <div class="box tip"><b>💡 この, その, あの bukan partikel の</b>この (ini), その (itu), dan あの (itu, yang jauh) adalah satu kata utuh yang langsung menempel ke kata benda: この かばん = tas ini. Jadi この かばんは 高[たか]いです artinya "Tas ini mahal", dengan topik この かばん.</div>` },
   { id: 'ga', on: s => s.has('が'), t: 'Kapan pakai が, bukan は atau を?',
     tip: 'Sesudah kata tanya (だれが, 何[なに]が) dan di jawabannya pakai が. Benda yang disukai, dikuasai, dimengerti, dimiliki, atau diinginkan juga ditandai が, bukan を.',
     b: `<p><b class="pt wa">は</b> menandai topik, hal yang sudah jelas sedang dibicarakan: 私[わたし]は 学生[がくせい]です。</p>
