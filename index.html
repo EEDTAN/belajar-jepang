@@ -249,6 +249,7 @@ details.pk td small{display:block;color:var(--muted)}
 .fc-b .e{font-size:12.5px;opacity:.95}
 .dot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--line)}
 .dot.l{background:var(--warn);box-shadow:0 0 10px var(--warn)}.dot.m{background:var(--good);box-shadow:0 0 10px var(--good)}
+.dot.f{background:var(--bad);box-shadow:0 0 10px var(--bad)}.dot.d{background:var(--cyan);box-shadow:0 0 10px var(--cyan)}.dot.a{background:var(--violet);box-shadow:0 0 10px var(--violet)}
 
 /* kanji */
 .kg{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
@@ -257,7 +258,7 @@ details.pk td small{display:block;color:var(--muted)}
 .kt:hover{transform:translateY(-4px) rotate(-2deg);border-color:var(--pink)}
 .kt .kchar{font-size:38px;font-weight:700;line-height:1.1}
 .kt small{font-size:11px;color:var(--muted);max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.kt.l{border-color:var(--warn)}.kt.m{border-color:var(--good);background:linear-gradient(160deg,var(--solid),rgba(18,169,116,.15))}
+.kt.l{border-color:var(--warn)}.kt.f{border-color:var(--bad)}.kt.d{border-color:var(--cyan)}.kt.a{border-color:var(--violet)}.kt.m{border-color:var(--good);background:linear-gradient(160deg,var(--solid),rgba(18,169,116,.15))}
 .modal{position:fixed;inset:0;z-index:50;background:rgba(10,5,25,.6);display:grid;place-items:center;padding:16px;animation:rise .25s}
 .modal .card{background:var(--solid);max-width:460px;width:100%;max-height:90vh;overflow:auto;animation:up .35s cubic-bezier(.2,1.2,.4,1)}
 .kbig{font:900 110px/1 'Noto Sans JP';text-align:center;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin:8px 0}
@@ -2247,7 +2248,13 @@ function schedule(card, g, now = Date.now()) {
   c.reps++; c.due = now + c.ivl * DAY; return c;
 }
 const fmtIvl = c => c.ivl === 0 ? 'dalam 10 menit (sesi ini)' : c.ivl === 1 ? 'besok' : c.ivl < 30 ? c.ivl + ' hari lagi' : '± ' + Math.round(c.ivl / 30) + ' bulan lagi';
-const status = id => { const c = S.cards[id]; return !c ? 'n' : c.ivl >= 21 ? 'm' : 'l'; };
+// status kartu, urutan cek = prioritas: baru > sering lupa > waktunya diulang > hafal (≥21 hari) > mulai ingat (≥7) > baru dikenal
+const status = (id, now = Date.now()) => { const c = S.cards[id]; return !c ? 'n' : c.lapses >= 3 && c.ivl < 21 ? 'f' : c.due <= now ? 'd' : c.ivl >= 21 ? 'm' : c.ivl >= 7 ? 'a' : 'l'; };
+const STATUS = [['n', '⬜', 'baru', 'var(--line)'], ['f', '🟥', 'sering lupa', 'var(--bad)'], ['d', '🟦', 'waktunya diulang', 'var(--cyan)'],
+  ['l', '🟧', 'baru dikenal', 'var(--warn)'], ['a', '🟪', 'mulai ingat', 'var(--violet)'], ['m', '🟩', 'hafal', 'var(--good)']];
+const stName = st => STATUS.find(x => x[0] === st)[2];
+const legend = arr => { const n = {}; arr.forEach(x => { const st = status(x.id); n[st] = (n[st] || 0) + 1; });
+  return `<div class="chips" style="flex-wrap:wrap;align-items:center">${STATUS.map(([st, ic, nm, col]) => `<span class="chip" style="border-color:${col}">${ic} ${nm} <small>${n[st] || 0}</small></span>`).join('')}${helpBtn('status')}</div>`; };
 
 /* ================= STATE ================= */
 const defaults = () => ({ cards: {}, xp: 0, streak: 0, lastDay: null, day: null, newToday: 0, doneToday: 0, newPerDay: 10, goal: 20, furi: true, focus: null, grammar: {}, best: 0, goalDay: null, theme: null, voice: true, vol: .5, loop: 'all', method: 'tema' });
@@ -2400,7 +2407,7 @@ function vHome() {
   rollDay();
   const L = level(S.xp), cur = S.xp - xpFor(L), need = xpFor(L + 1) - xpFor(L);
   const due = dueItems().length, nl = newLeft();
-  const cnt = arr => arr.filter(x => S.cards[x.id]).length, mas = arr => arr.filter(x => status(x.id) === 'm').length;
+  const cnt = arr => arr.filter(x => S.cards[x.id]).length, mas = arr => arr.filter(x => S.cards[x.id]?.ivl >= 21).length;
   const gDone = Object.keys(S.grammar).length, cb = babMode() && curBab();
   // metode Bab: sarankan grammar hanya sampai bab kosakata yang sedang dipelajari
   const nextG = gOrder().find(i => !S.grammar[i] && (!cb || GRAMMAR[i].b <= cb)) ?? -1, gWait = nextG < 0 && gDone < GRAMMAR.length;
@@ -2764,24 +2771,25 @@ function vVocab() {
   return `<div class="row"><h1>📖 Kosakata</h1><span class="sp"></span><span class="muted">${babMode() ? '📘 Urut per bab Minna no Nihongo I' : '🗂️ Urut per tema'} · klik kartu untuk membalik${helpBtn('status')}</span></div>
   <div class="chips">${groups().map(t => { const all = inG(t), n = all.filter(v => S.cards[v.id]).length;
     return `<button class="chip ${t === VT ? 'on' : ''}" onclick="VT='${t}';render()">${t} <small>${n}/${all.length}</small></button>`; }).join('')}</div>
+  ${legend(items)}
   <div class="card row" style="margin-bottom:16px;padding:14px 18px">
     <span>${S.focus === VT ? `⭐ ${What} ini <b>diprioritaskan</b> untuk kartu baru di Review.` : `Ingin fokus ke ${what} ini? Kartu barunya akan muncul duluan di Review.`}${helpBtn('metode')}</span><span class="sp"></span>
     <button class="btn ${S.focus === VT ? 'ghost' : 'alt'}" onclick="S.focus=S.focus===VT?null:VT;save();R=null;render()">${S.focus === VT ? 'Batalkan' : '⭐ Prioritaskan'}</button>
   </div>
   <div class="fcg">${items.map((v, i) => { const st = status(v.id);
     return `<div class="fc" onclick="this.classList.toggle('on')" style="animation:rise .4s ${Math.min(i, 20) * .03}s both">
-      <div class="fc-in"><div class="fc-f"><span class="dot ${st}" title="${st === 'n' ? 'baru' : st === 'l' ? 'sedang dipelajari' : 'hafal'}"></span><div class="w">${wordHTML(v)}</div></div>
+      <div class="fc-in"><div class="fc-f"><span class="dot ${st}" title="${stName(st)}"></span><div class="w">${wordHTML(v)}</div></div>
       <div class="fc-b"><div class="row" style="justify-content:center"><span class="jp" style="font-size:20px;font-weight:700">${v.r}</span>${spk(v.r)}</div>
       <div class="m">${esc(v.m)}</div><div class="e jp">${furi(v.ex)}</div><div class="e">${esc(v.exid)}</div></div></div></div>`; }).join('')}</div>`;
 }
 
 /* ---------- kanji ---------- */
 function vKanji() {
-  return `<div class="row"><h1>漢 Kanji N5</h1><span class="sp"></span>
-    <span class="chip">⬜ baru</span><span class="chip" style="border-color:var(--warn)">🟧 dipelajari</span><span class="chip" style="border-color:var(--good)">🟩 hafal</span>${helpBtn('status')}</div>
+  return `<div class="row"><h1>漢 Kanji N5</h1></div>
+  ${legend(KANJI)}
   <p class="muted">Klik kanji untuk melihat arti, cara baca, dan mnemonik. Kanji masuk ke Review otomatis bersama kosakata.</p>
   <div class="card" style="margin-bottom:16px;padding:14px 18px">💡 Setiap kanji punya <b>cara baca utama</b> (saat berdiri sendiri, mis. 七 = <b>nana</b>). Saat bergabung dengan kanji lain, bacaannya bisa berubah (七月 = <b>shichi</b>gatsu, Juli) — semuanya tetap bahasa Jepang.</div>
-  <div class="kg">${KANJI.map((k, i) => `<button class="kt ${status(k.id)}" onclick="openKanji(${i})" style="animation:rise .35s ${i * .012}s both"><span class="kchar">${k.c}</span><small>${esc(k.m)}</small></button>`).join('')}</div>`;
+  <div class="kg">${KANJI.map((k, i) => `<button class="kt ${status(k.id)}" title="${stName(status(k.id))}" onclick="openKanji(${i})" style="animation:rise .35s ${i * .012}s both"><span class="kchar">${k.c}</span><small>${esc(k.m)}</small></button>`).join('')}</div>`;
 }
 function openKanji(i) {
   const k = KANJI[i];
@@ -2809,11 +2817,16 @@ const HELP = [
     <ul><li>Kartu yang baru dikenalkan di sesi itu paling tinggi mendapat <b>Bagus</b>.</li>
       <li>Kalau jawabanmu sebenarnya benar tapi dinilai Lupa (misalnya sinonim yang belum dikenali), tekan <b>"Jawabanku sebenarnya benar"</b>. Kartu itu dihitung Bagus.</li>
       <li>Setiap kartu punya tingkat kemudahan sendiri. Sering Lupa atau Sulit membuat jaraknya tumbuh lebih lambat, sering Mudah membuatnya tumbuh lebih cepat.</li></ul>`],
-  ['status', '🟢 Status kartu: baru · sedang dipelajari · hafal', `
-    <ul><li><b>Baru</b> (⬜, titik abu-abu): belum pernah kamu jawab di Review.</li>
-      <li><b>Sedang dipelajari</b> (🟧, titik oranye): sudah pernah dijawab, tapi jarak ulangnya masih kurang dari 21 hari.</li>
-      <li><b>Hafal</b> (🟩, titik hijau): jarak ulangnya sudah 21 hari atau lebih. Artinya kamu sudah berkali-kali menjawabnya dengan benar.</li></ul>
-    <p>Kartu yang sudah hafal lalu dijawab Lupa akan turun lagi menjadi "sedang dipelajari". Di Beranda, angka "dipelajari" menghitung kartu oranye dan hijau, sedangkan angka "hafal" hanya kartu hijau.</p>`],
+  ['status', '🟢 Status kartu: baru · sering lupa · waktunya diulang · baru dikenal · mulai ingat · hafal', `
+    <p>Warna ini muncul sebagai titik di kartu Kosakata dan sebagai bingkai di kotak Kanji. Angka kecil di sebelah tiap status menunjukkan jumlah kartunya.</p>
+    <ul><li><b>Baru</b> (⬜, abu-abu): belum pernah kamu jawab di Review.</li>
+      <li><b>Sering lupa</b> (🟥, merah): sudah 3 kali atau lebih dijawab Lupa dan belum sampai hafal. Kartu ini paling perlu perhatian, jadi coba baca contoh kalimat dan mnemoniknya lagi.</li>
+      <li><b>Waktunya diulang</b> (🟦, biru): jadwal ulangnya sudah tiba. Kartu ini akan muncul di Review berikutnya.</li>
+      <li><b>Baru dikenal</b> (🟧, oranye): sudah pernah dijawab, tapi jarak ulangnya masih kurang dari 7 hari.</li>
+      <li><b>Mulai ingat</b> (🟪, ungu): jarak ulangnya 7 sampai 20 hari. Kamu sudah beberapa kali menjawabnya dengan benar.</li>
+      <li><b>Hafal</b> (🟩, hijau): jarak ulangnya sudah 21 hari atau lebih.</li></ul>
+    <p>Kalau satu kartu cocok dengan beberapa status, yang ditampilkan adalah yang paling atas di daftar ini (kecuali Baru). Kartu hafal yang dijawab Lupa turun lagi ke Baru dikenal. Status Sering lupa hilang begitu kartunya sampai hafal.</p>
+    <p>Di Beranda, angka "dipelajari" menghitung semua kartu yang pernah dijawab, sedangkan angka "hafal" menghitung kartu yang jarak ulangnya 21 hari atau lebih, termasuk yang sedang waktunya diulang.</p>`],
   ['soal', '✍️ Jenis soal & jawaban yang diterima', `
     <p>Supaya kamu hafal dari dua arah, jenis soal untuk tiap kartu bergantian:</p>
     <ul><li><b>ID</b>: lihat kata Jepang, ketik artinya dalam bahasa Indonesia.</li>
@@ -3307,6 +3320,9 @@ function runTests() {
   babWords.forEach(w => { if (!BYW[w]) throw new Error('kata di BABRAW tidak ada di kosakata: ' + w); });
   eq(new Set(babWords).size, babWords.length, 'kata di BABRAW tidak dobel');
   for (let b = 1; b <= 25; b++) if (!BABORDER.some(v => v.bab === b)) throw new Error('Bab ' + b + ' belum punya kata');
+  { const bak = S.cards, T = 1e12, st = c => { S.cards = { x: c }; return status('x', T); }; // status kartu
+    const r = [st(undefined), st({ ivl: 2, lapses: 3, due: T + 1 }), st({ ivl: 30, lapses: 5, due: T + 1 }), st({ ivl: 3, lapses: 0, due: T - 1 }), st({ ivl: 3, lapses: 0, due: T + 1 }), st({ ivl: 10, lapses: 1, due: T + 1 }), st({ ivl: 25, lapses: 0, due: T + 1 })].join('');
+    S.cards = bak; if (r !== 'nfmdlam') throw new Error('status kartu salah: ' + r); }
   ['nilai', 'status', 'soal', 'baru', 'progres', 'xp', 'metode', 'grammar', 'kuis', 'tombol'].forEach(id => { if (!HELP.some(h => h[0] === id)) throw new Error('keterangan belum ada: ' + id); });
   eq(new Set(HELP.map(h => h[0])).size, HELP.length, 'id keterangan unik');
   eq(GRAMMAR.every(g => g.b >= 1 && g.b <= 25), true, 'grammar punya bab'); eq(new Set(GRAMMAR.map(g => g.t)).size, GRAMMAR.length, 'judul grammar unik');
