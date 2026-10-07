@@ -2472,7 +2472,7 @@ function vHome() {
       </div>
       <div class="row" style="margin-top:14px;padding:12px 14px;border-radius:16px;background:var(--glass);border:1px solid var(--line)">
         <span>☁️ ${SYNC ? '<b style="color:var(--good)">Sinkron & pengingat HP aktif</b>' : 'Sinkron belum aktif — buka <b>link sinkron</b> sekali di perangkat ini.'}</span><span class="sp"></span>
-        ${SYNC ? '<button class="btn ghost" onclick="testNotify()">🔔 Kirim notifikasi percobaan</button>' : ''}
+        ${SYNC ? '<button class="btn ghost" onclick="testNotify()">🔔 Kirim notifikasi percobaan</button> <button class="btn ghost" onclick="testFlood()">🚨 Uji banjir</button>' : ''}
       </div>
       <p class="muted" style="margin:10px 0 0;font-size:13px">${SYNC ? 'Progres otomatis tersinkron antara PC dan HP.' : 'Progres tersimpan di browser ini.'} Pintasan: <b>Enter</b> periksa / lanjut · <b>Spasi</b> lanjut.</p>
     </section>
@@ -3402,6 +3402,14 @@ async function pull() {
       toast('☁️ Progres disinkronkan');
     } else if (la > ra) push();
   } catch (e) { } // offline: tetap jalan pakai data lokal
+}
+async function testFlood() {
+  try {
+    const r = await api({ action: 'testBanjir' });
+    if (!r.ok) return toast(r.error === 'action' ? 'Server belum diperbarui: tempel Code.gs terbaru lalu terapkan versi baru' : 'Gagal: ' + r.error);
+    toast(r.result === 'terkirim' ? '🚨 1 pesan dikirim. Dalam ≤5 menit banjir tiap 15 detik mulai. Jawab 1 kartu untuk menghentikan.' : 'Banjir tidak jalan: ' + r.result);
+  }
+  catch (e) { toast('Gagal terhubung ke server sinkron'); }
 }
 async function testNotify() {
   try {
