@@ -3406,7 +3406,8 @@ try { SYNC = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch (e) { }
 function readSyncLink() {
   const m = location.hash.match(/^#sync=(.+)$/); if (!m) return;
   try {
-    const c = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+    let t = m[1]; for (let i = 0; i < 3 && t.includes('%'); i++) t = decodeURIComponent(t); // Telegram bisa meng-encode link dua kali (%3D → %253D)
+    const c = JSON.parse(decodeURIComponent(escape(atob(t.replace(/=+$/, '')))));
     if (!c.url || !c.secret) throw 0;
     const baru = !SYNC || SYNC.url !== c.url;
     SYNC = c; try { localStorage.setItem(SYNC_KEY, JSON.stringify(c)); } catch (e) { }
