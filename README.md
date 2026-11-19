@@ -1,3 +1,5 @@
+[![Support me](https://img.shields.io/badge/%E2%99%A5%20Support%20me-ff5e5b?style=for-the-badge)](https://sociabuzz.com/ewrofficial/tribe)
+
 # Nihongo Dojo
 
 Belajar bahasa Jepang JLPT N5 dengan spaced repetition.
